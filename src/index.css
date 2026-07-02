@@ -8,12 +8,63 @@ body {
   background-color: #F7F9F8;
   color: #1A1A2E;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 a { text-decoration: none; color: inherit; }
 
 #root { display: flex; min-height: 100vh; }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: #F3F6F4; }
+/* ── Global interaction polish ───────────────────────────────────────────
+   Pages use inline styles, so element-level rules here give every button,
+   input, and link consistent hover/focus behavior without touching pages. */
+
+button {
+  cursor: pointer;
+  transition: background-color .18s ease, color .18s ease,
+              border-color .18s ease, box-shadow .18s ease,
+              opacity .18s ease, filter .18s ease;
+}
+button:not(:disabled):hover { filter: brightness(0.96); }
+button:not(:disabled):active { filter: brightness(0.92); }
+button:disabled { cursor: not-allowed; }
+
+input, select, textarea {
+  transition: border-color .15s ease, box-shadow .15s ease;
+  font-family: inherit;
+}
+
+/* Visible keyboard focus everywhere (never on plain mouse clicks) */
+:focus-visible {
+  outline: 2px solid #059669;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none;
+  border-color: #059669 !important;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
+}
+
+/* Numbers align in tables and KPI cards */
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* Shared keyframes (pages no longer need their own <style> blocks) */
+@keyframes spin   { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes pulse  { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+::selection { background: rgba(5, 150, 105, 0.18); }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
