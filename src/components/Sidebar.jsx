@@ -3,33 +3,20 @@ import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Map, Tractor, Users, Database, Upload, SlidersHorizontal, Leaf, LogOut } from 'lucide-react';
 import { C } from '../theme';
 import { useAuth } from '../context/AuthContext';
+import leaf from '../assets/leaf.jpg';
 
-const NAV_GROUPS = [
-  {
-    label: 'GENERAL',
-    items: [
-      { to: '/',     label: 'Dashboard',  Icon: LayoutDashboard },
-      { to: '/map',  label: 'Farm Map',   Icon: Map             },
-      { to: '/farms',label: 'Farm Cycles',Icon: Tractor         },
-    ],
-  },
-  {
-    label: 'MANAGEMENT',
-    items: [
-      { to: '/users',    label: 'Users',             Icon: Users              },
-      { to: '/datasets', label: 'Rice Varieties',    Icon: Database           },
-      { to: '/rules',    label: 'Suitability Rules', Icon: SlidersHorizontal  },
-    ],
-  },
-  {
-    label: 'DATA',
-    items: [
-      { to: '/import',   label: 'Import Varieties',  Icon: Upload             },
-    ],
-  },
+const NAV_ITEMS = [
+  { to: '/',         label: 'Dashboard',         Icon: LayoutDashboard   },
+  { to: '/map',      label: 'Farm Map',          Icon: Map               },
+  { to: '/farms',    label: 'Farm Cycles',       Icon: Tractor           },
+  { to: '/users',    label: 'Users',             Icon: Users             },
+  { to: '/datasets', label: 'Rice Varieties',    Icon: Database          },
+  { to: '/rules',    label: 'Suitability Rules', Icon: SlidersHorizontal },
+  { to: '/import',   label: 'Import Varieties',  Icon: Upload            },
 ];
 
-/* One nav row — inline styles need JS hover state, so each row owns its own. */
+/* Icon-only rail button. Active = white chip with green icon.
+   Label appears as a floating tooltip on hover. */
 function NavItem({ to, label, Icon }) {
   const [hover, setHover] = useState(false);
 
@@ -39,36 +26,34 @@ function NavItem({ to, label, Icon }) {
         <div
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}
-          style={{
-            position: 'relative',
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '9px 12px', borderRadius: 9,
-            backgroundColor: isActive ? C.primaryLighter : hover ? C.surfaceAlt : 'transparent',
+          style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}
+        >
+          <div style={{
+            width: 42, height: 42, borderRadius: 14,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            backgroundColor: isActive ? '#FFFFFF' : hover ? C.sidebarHover : 'transparent',
             cursor: 'pointer',
             transition: 'background-color 0.15s ease',
-          }}
-        >
-          {/* Active indicator bar */}
-          <span style={{
-            position: 'absolute', left: -10, top: '50%',
-            transform: 'translateY(-50%)',
-            width: 3, height: isActive ? 20 : 0, borderRadius: 9999,
-            backgroundColor: C.primary,
-            transition: 'height 0.18s ease',
-          }} />
-          <Icon
-            size={16}
-            color={isActive ? C.primary : hover ? C.textSecondary : C.textTertiary}
-            strokeWidth={isActive ? 2.2 : 2}
-          />
-          <span style={{
-            fontSize: 13,
-            fontWeight: isActive ? 650 : 500,
-            color: isActive ? C.primaryDark : hover ? C.text : C.textSecondary,
-            transition: 'color 0.15s ease',
           }}>
-            {label}
-          </span>
+            <Icon
+              size={18}
+              color={isActive ? C.primary : 'rgba(255,255,255,0.72)'}
+              strokeWidth={isActive ? 2.3 : 2}
+            />
+          </div>
+
+          {/* Tooltip */}
+          {hover && (
+            <div style={{
+              position: 'absolute', left: 52, top: '50%', transform: 'translateY(-50%)',
+              backgroundColor: C.text, color: '#fff',
+              fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+              padding: '6px 10px', borderRadius: 8, zIndex: 100,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.18)', pointerEvents: 'none',
+            }}>
+              {label}
+            </div>
+          )}
         </div>
       )}
     </NavLink>
@@ -84,70 +69,49 @@ export default function Sidebar() {
 
   return (
     <aside style={{
-      width: 240, minHeight: '100vh', flexShrink: 0,
-      backgroundColor: C.surface,
-      borderRight: `1px solid ${C.borderLight}`,
-      display: 'flex', flexDirection: 'column',
-      position: 'sticky', top: 0, height: '100vh',
+      width: 76, flexShrink: 0, height: '100%',
+      padding: '12px 0 12px 12px',
+      boxSizing: 'border-box',
     }}>
+      <div style={{
+        height: '100%', borderRadius: 22,
+        backgroundColor: C.sidebar,
+        backgroundImage: `linear-gradient(${C.sidebar}D9, ${C.sidebar}F2), url(${leaf})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        padding: '18px 0',
+      }}>
 
-      {/* Brand */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '20px 18px', borderBottom: `1px solid ${C.borderLight}` }}>
+        {/* Logo */}
         <div style={{
-          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-          background: `linear-gradient(135deg, ${C.primary} 0%, ${C.primaryDark} 100%)`,
+          width: 42, height: 42, borderRadius: 14, flexShrink: 0,
+          backgroundColor: '#FFFFFF',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: `0 4px 12px ${C.primary}35`,
+          marginBottom: 26,
         }}>
-          <Leaf size={17} color="#fff" />
+          <Leaf size={20} color={C.primary} strokeWidth={2.4} />
         </div>
-        <div>
-          <p style={{ fontSize: 14, fontWeight: 750, color: C.text, lineHeight: 1.2, letterSpacing: '-0.01em' }}>GeoRice Advisor</p>
-          <p style={{ fontSize: 10.5, color: C.textTertiary, marginTop: 2, fontWeight: 500 }}>Admin Panel</p>
-        </div>
-      </div>
 
-      {/* Nav groups */}
-      <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
-        {NAV_GROUPS.map(({ label, items }) => (
-          <div key={label}>
-            <p style={{
-              fontSize: 10, fontWeight: 700, color: C.textTertiary,
-              letterSpacing: '0.1em', marginBottom: 7, paddingLeft: 12,
-            }}>
-              {label}
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {items.map(item => <NavItem key={item.to} {...item} />)}
-            </div>
-          </div>
-        ))}
-      </nav>
+        {/* Nav */}
+        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+          {NAV_ITEMS.map(item => <NavItem key={item.to} {...item} />)}
+        </nav>
 
-      {/* Footer — user card */}
-      <div style={{ padding: 14, borderTop: `1px solid ${C.borderLight}` }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '10px 11px', borderRadius: 11,
-          backgroundColor: C.surfaceAlt,
-          border: `1px solid ${C.borderLight}`,
-        }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-            background: `linear-gradient(135deg, ${C.primaryLighter} 0%, #D3EEDF 100%)`,
-            border: `1.5px solid ${C.primary}30`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span style={{ fontSize: 12, fontWeight: 750, color: C.primaryDark }}>{initials}</span>
+        {/* User + logout */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: 12 }}>
+          <div
+            title={user?.email || ''}
+            style={{
+              width: 36, height: 36, borderRadius: '50%',
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              border: '1.5px solid rgba(255,255,255,0.25)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <span style={{ fontSize: 12, fontWeight: 750, color: '#fff' }}>{initials}</span>
           </div>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ fontSize: 12.5, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user?.name || 'Admin'}
-            </p>
-            <p style={{ fontSize: 10.5, color: C.textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {user?.email || ''}
-            </p>
-          </div>
+
           <button
             onClick={logout}
             title="Logout"
@@ -155,12 +119,13 @@ export default function Sidebar() {
             onMouseEnter={() => setLogoutHover(true)}
             onMouseLeave={() => setLogoutHover(false)}
             style={{
-              background: logoutHover ? C.errorLight : 'none',
-              border: 'none', padding: 6, borderRadius: 7,
-              display: 'flex', alignItems: 'center',
+              width: 36, height: 36, borderRadius: 12, border: 'none', cursor: 'pointer',
+              backgroundColor: logoutHover ? 'rgba(231,76,60,0.22)' : 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'background-color 0.15s ease',
             }}
           >
-            <LogOut size={14} color={logoutHover ? C.error : C.textTertiary} />
+            <LogOut size={16} color={logoutHover ? '#FF8B7E' : 'rgba(255,255,255,0.6)'} />
           </button>
         </div>
       </div>

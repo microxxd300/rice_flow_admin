@@ -548,7 +548,7 @@ export default function Rules() {
 
   if (loading) {
     return (
-      <div style={{ padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: 28, backgroundColor: C.background, minHeight: '100vh' }}>
+      <div style={{ padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: 28, backgroundColor: C.background, minHeight: '100%' }}>
         <SkeletonStyles />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -593,7 +593,7 @@ export default function Rules() {
   }
 
   return (
-    <div style={{ padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: 28, backgroundColor: C.background, minHeight: '100vh' }}>
+    <div style={{ padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: 28, backgroundColor: C.background, minHeight: '100%' }}>
       <SkeletonStyles />
 
       {/* ── Header ────────────────────────────────────────────────────── */}

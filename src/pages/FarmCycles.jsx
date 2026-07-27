@@ -242,7 +242,7 @@ export default function FarmCycles() {
   /* ───── Skeleton state ────────────────────────────────────────────── */
   if (loading) {
     return (
-      <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: C.background, minHeight: '100vh' }}>
+      <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: C.background, minHeight: '100%' }}>
         <SkeletonStyles />
         <div>
           <Skeleton width={250} height={22} radius={6} style={{ marginBottom: 8 }} />
@@ -280,7 +280,7 @@ export default function FarmCycles() {
   }
 
   return (
-    <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: C.background, minHeight: '100vh' }}>
+    <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: C.background, minHeight: '100%' }}>
       <SkeletonStyles />
 
       {/* Header */}

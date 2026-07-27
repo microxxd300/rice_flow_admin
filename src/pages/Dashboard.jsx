@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { C } from '../theme';
+import { C, pastel } from '../theme';
 import { api } from '../services/api';
 import { reverseGeocode, getCachedGeocode } from '../services/geocode';
 import Skeleton, { SkeletonStyles, SkelStatCard, SkelListRow } from '../components/Skeleton';
 import {
   Users as UsersIcon, Tractor, Sparkles, TrendingUp,
   Sprout, MapPin, FileBarChart, SlidersHorizontal, Plus,
-  UserPlus, Wheat, Activity, Wifi, RefreshCw, ChevronRight,
+  UserPlus, Wheat, Activity, Wifi, RefreshCw, ChevronRight, ArrowUpRight,
 } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Sector, Label } from 'recharts';
 
 const shadow = '0 1px 6px rgba(26,26,46,0.06), 0 0 1px rgba(26,26,46,0.04)';
 const card   = { backgroundColor: C.surface, borderRadius: 14, boxShadow: shadow, border: `1px solid ${C.borderLight}`, overflow: 'hidden' };
@@ -19,10 +19,11 @@ const ECOSYSTEM_LABEL = {
   rainfed_lowland:   'Rainfed Lowland',
   upland:            'Upland',
 };
+/* Green ramp drawn from the theme so the chart reads as one family */
 const ECOSYSTEM_COLOR = {
-  irrigated_lowland: C.info,
-  rainfed_lowland:   C.success,
-  upland:            C.warning,
+  irrigated_lowland: C.primaryDark,
+  rainfed_lowland:   C.primary,
+  upland:            C.primaryLight,
 };
 
 const EVENT_META = {
@@ -36,38 +37,48 @@ const EVENT_META = {
 /*  Atoms                                                                     */
 /* -------------------------------------------------------------------------- */
 
-function StatCard({ label, value, unit, sub, Icon, accent = C.primary, delta }) {
+function StatCard({ label, value, unit, sub, Icon, delta, tint = pastel[0] }) {
   // delta = { value: number, label: string, positive: bool }
   return (
-    <div style={{ ...card, padding: '20px 22px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-        <p style={{ fontSize: 12, fontWeight: 500, color: '#9CA3AF' }}>{label}</p>
+    <div style={{
+      backgroundColor: tint.bg, borderRadius: 18, padding: '18px 20px',
+      border: '1px solid rgba(255,255,255,0.6)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
         <div style={{
-          width: 30, height: 30, borderRadius: 8,
-          backgroundColor: accent + '15',
+          width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.75)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <Icon size={14} color={accent} />
+          <Icon size={16} color={tint.icon} />
+        </div>
+        <div style={{
+          width: 26, height: 26, borderRadius: '50%', backgroundColor: C.primary,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <ArrowUpRight size={14} color="#fff" strokeWidth={2.5} />
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, marginBottom: 10 }}>
-        <p style={{ fontSize: 32, fontWeight: 800, lineHeight: 1, color: C.text, fontVariantNumeric: 'tabular-nums' }}>{value}</p>
-        {unit && <p style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 2 }}>{unit}</p>}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+
+      <p style={{ fontSize: 12, fontWeight: 500, color: C.textSecondary, marginBottom: 8 }}>{label}</p>
+
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5 }}>
+          <p style={{ fontSize: 28, fontWeight: 800, lineHeight: 1, color: C.text, fontVariantNumeric: 'tabular-nums' }}>{value}</p>
+          {unit && <p style={{ fontSize: 11, color: C.textSecondary, marginBottom: 2 }}>{unit}</p>}
+        </div>
         {delta && (
           <span style={{
-            fontSize: 11, fontWeight: 700,
-            color: delta.positive ? C.success : C.error,
-            backgroundColor: (delta.positive ? C.success : C.error) + '15',
-            padding: '2px 7px', borderRadius: 6,
-            fontVariantNumeric: 'tabular-nums',
+            fontSize: 11, fontWeight: 700, color: delta.positive ? C.primaryDark : C.error,
+            backgroundColor: 'rgba(255,255,255,0.75)',
+            padding: '3px 9px', borderRadius: 9999,
+            fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
           }}>
             {delta.positive ? '+' : ''}{delta.value}
           </span>
         )}
-        {sub && <p style={{ fontSize: 11, color: '#9CA3AF' }}>{sub}</p>}
       </div>
+
+      {sub && <p style={{ fontSize: 11, color: C.textSecondary, marginTop: 8, opacity: 0.8 }}>{sub}</p>}
     </div>
   );
 }
@@ -153,6 +164,7 @@ export default function Dashboard() {
   const [refreshing, setRefresh]  = useState(false);
   const [lastUpdated, setUpdated] = useState(null);
   const [topLocation, setTopLocation] = useState(null);  // resolved Nominatim address
+  const [activeEco, setActiveEco] = useState(0);         // highlighted pie slice
 
   const loadAll = async ({ silent = false } = {}) => {
     if (!silent) setRefresh(true);
@@ -193,7 +205,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div style={{ padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: 28, backgroundColor: C.background, minHeight: '100vh' }}>
+      <div style={{ padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: 28, backgroundColor: C.background, minHeight: '100%' }}>
         <SkeletonStyles />
         {/* Header skeleton */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -283,6 +295,17 @@ export default function Dashboard() {
   }));
   const ecoTotal = ecosystemPie.reduce((s, e) => s + e.value, 0);
 
+  // Active slice pops out and gains a thin outer halo ring.
+  const renderEcoShape = ({ outerRadius = 0, ...props }) =>
+    props.index === activeEco ? (
+      <g>
+        <Sector {...props} outerRadius={outerRadius + 8} />
+        <Sector {...props} innerRadius={outerRadius + 12} outerRadius={outerRadius + 20} />
+      </g>
+    ) : (
+      <Sector {...props} outerRadius={outerRadius} />
+    );
+
   const topVarietiesBar = (stats?.top_varieties ?? []).map(v => ({
     nsic_code: v.nsic_code,
     label:     v.common_name,
@@ -294,7 +317,7 @@ export default function Dashboard() {
   const events = stats?.recent_activity ?? [];
 
   return (
-    <div style={{ padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: 28, backgroundColor: C.background, minHeight: '100vh' }}>
+    <div style={{ padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: 28, backgroundColor: C.background, minHeight: '100%' }}>
       <SkeletonStyles />
 
       {/* ── Header ────────────────────────────────────────────────────── */}
@@ -339,7 +362,7 @@ export default function Dashboard() {
           sub={newUsersWeek > 0 ? `this week` : 'no new this week'}
           delta={newUsersWeek > 0 ? { value: newUsersWeek, positive: userGrowthDelta >= 0 } : null}
           Icon={UsersIcon}
-          accent={C.info}
+          tint={pastel[0]}
         />
         <StatCard
           label="Active Farms"
@@ -348,7 +371,7 @@ export default function Dashboard() {
           sub={`${totalHectares.toLocaleString()} ha cultivated`}
           delta={newFarmsWeek > 0 ? { value: newFarmsWeek, positive: true } : null}
           Icon={Tractor}
-          accent={C.primary}
+          tint={pastel[1]}
         />
         <StatCard
           label="Recommendations"
@@ -357,7 +380,7 @@ export default function Dashboard() {
           sub={recsThisMonth > 0 ? `${recsThisMonth} this month` : `${activeVars} active varieties`}
           delta={recsThisMonth > 0 ? { value: recsThisMonth, positive: true } : null}
           Icon={Sparkles}
-          accent={C.accent}
+          tint={pastel[2]}
         />
         <StatCard
           label="Average Yield"
@@ -365,7 +388,7 @@ export default function Dashboard() {
           unit="t/ha"
           sub={`${stats?.yield_records ?? 0} harvest record${stats?.yield_records === 1 ? '' : 's'} · ${totalHarvest} t total`}
           Icon={TrendingUp}
-          accent={C.success}
+          tint={pastel[3]}
         />
       </div>
 
@@ -426,130 +449,151 @@ export default function Dashboard() {
       )}
 
       {/* ── Two charts row ────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      {/* Donut column is fixed so the square card hugs the 300px chart. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '392px minmax(0, 1fr)', gap: 20 }}>
 
-        {/* Farms by Ecosystem (simplified donut) */}
-        <div style={card}>
+        {/* Farms by Ecosystem — interactive donut, square card */}
+        <div style={{ ...card, height: 392, display: 'flex', flexDirection: 'column' }}>
           <SectionHeader
             title="Farms by Ecosystem"
-            sub="How active farms split across the three ecosystem types"
+            sub="Hover a slice to inspect it"
           />
-          <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 24 }}>
-            <div style={{ position: 'relative', width: 168, height: 168, flexShrink: 0 }}>
-              {ecosystemPie.length > 0 ? (
-                <>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={ecosystemPie}
-                        cx="50%" cy="50%"
-                        innerRadius={58} outerRadius={82}
-                        dataKey="value"
-                        stroke={C.surface} strokeWidth={2}
-                        isAnimationActive={false}
-                      >
-                        {ecosystemPie.map((e, i) => <Cell key={i} fill={e.color} />)}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none' }}>
-                    <p style={{ fontSize: 24, fontWeight: 700, color: C.text, lineHeight: 1 }}>{ecoTotal}</p>
-                    <p style={{ fontSize: 10, color: '#9CA3AF', marginTop: 3 }}>farms</p>
-                  </div>
-                </>
-              ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', fontSize: 12 }}>
-                  No farms yet
+
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '4px 12px 22px' }}>
+            {ecoTotal > 0 ? (
+              <>
+                <PieChart width={272} height={272} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                  <Pie
+                    data={ecosystemPie}
+                    dataKey="value"
+                    nameKey="label"
+                    cx={136} cy={136}
+                    innerRadius={68}
+                    outerRadius={100}
+                    stroke={C.surface}
+                    strokeWidth={4}
+                    shape={renderEcoShape}
+                    onMouseEnter={(_, i) => setActiveEco(i)}
+                    isAnimationActive={false}
+                  >
+                    {ecosystemPie.map((e, i) => <Cell key={i} fill={e.color} />)}
+                    <Label
+                      position="center"
+                      content={({ viewBox }) => {
+                        if (!viewBox || !('cx' in viewBox)) return null;
+                        const active = ecosystemPie[activeEco] ?? ecosystemPie[0];
+                        const pct = ecoTotal ? Math.round((active.value / ecoTotal) * 100) : 0;
+                        return (
+                          <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
+                            <tspan x={viewBox.cx} y={viewBox.cy - 8} fill={C.text} fontSize="30" fontWeight="800">
+                              {active.value}
+                            </tspan>
+                            <tspan x={viewBox.cx} y={viewBox.cy + 16} fill="#9CA3AF" fontSize="12">
+                              {active.label}
+                            </tspan>
+                            <tspan x={viewBox.cx} y={viewBox.cy + 34} fill={active.color} fontSize="12" fontWeight="700">
+                              {pct}% of {ecoTotal}
+                            </tspan>
+                          </text>
+                        );
+                      }}
+                    />
+                  </Pie>
+                </PieChart>
+
+                {/* Legend */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px 18px', marginTop: 4 }}>
+                  {ecosystemPie.map((e, i) => (
+                    <button
+                      key={e.key}
+                      onMouseEnter={() => setActiveEco(i)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 7,
+                        background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        opacity: i === activeEco ? 1 : 0.55,
+                      }}
+                    >
+                      <span style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: e.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, color: C.text, fontWeight: i === activeEco ? 700 : 500 }}>
+                        {e.label}
+                      </span>
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {ecosystemPie.length > 0
-                ? ecosystemPie.map(e => {
-                    const pct = ecoTotal ? Math.round((e.value / ecoTotal) * 100) : 0;
-                    return (
-                      <div key={e.key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: e.color, flexShrink: 0 }} />
-                        <span style={{ fontSize: 13, color: C.text, flex: 1 }}>{e.label}</span>
-                        <span style={{ fontSize: 13, color: C.text, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                          {e.value}
-                        </span>
-                        <span style={{ fontSize: 11, color: '#9CA3AF', minWidth: 32, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                          {pct}%
-                        </span>
-                      </div>
-                    );
-                  })
-                : <p style={{ fontSize: 13, color: '#9CA3AF' }}>No farms registered yet.</p>}
-            </div>
+              </>
+            ) : (
+              <p style={{ fontSize: 13, color: '#9CA3AF' }}>No farms registered yet.</p>
+            )}
           </div>
         </div>
 
-        {/* Top Recommended Varieties — leaderboard-style horizontal bars */}
-        <div style={card}>
+        {/* Top Recommended Varieties — clean table */}
+        <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
           <SectionHeader
             title="Top Recommended Varieties"
             sub="The varieties appearing most often in the engine's top-3 picks"
           />
-          <div style={{ padding: '12px 24px 16px', display: 'flex', flexDirection: 'column' }}>
-            {topVarietiesBar.length > 0 ? topVarietiesBar.map((v, i) => {
-              // Show common_name only when it differs from nsic_code,
-              // otherwise nsic_code alone is enough.
-              const name = (v.label && v.label !== v.nsic_code) ? v.label : v.nsic_code;
-
-              // Medal styling for ranks 1–3; subdued for 4+.
-              const MEDALS = [
-                { bg: '#FEF3DC', color: '#B45309' },   // gold
-                { bg: '#F3F4F6', color: '#6B7280' },   // silver
-                { bg: '#FDEBD0', color: '#C2410C' },   // bronze
-              ];
-              const medal = MEDALS[i] || { bg: C.surfaceAlt, color: '#9CA3AF' };
-              const isTop = i === 0;
-
-              return (
-                <div key={v.nsic_code || i} style={{
-                  display: 'flex', alignItems: 'center', gap: 14,
-                  padding: '12px 14px',
-                  margin: isTop ? '0 -10px' : 0,
-                  borderRadius: isTop ? 10 : 0,
-                  backgroundColor: isTop ? '#FEF3DC30' : 'transparent',
-                  borderBottom: i < topVarietiesBar.length - 1 && !isTop ? `1px solid ${C.borderLight}` : 'none',
-                }}>
-                  {/* Rank medal */}
-                  <div style={{
-                    width: 28, height: 28, borderRadius: '50%',
-                    backgroundColor: medal.bg, color: medal.color,
-                    fontWeight: 800, fontSize: 12,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, fontVariantNumeric: 'tabular-nums',
-                    boxShadow: isTop ? '0 1px 4px rgba(180, 83, 9, 0.18)' : 'none',
-                  }}>
-                    {i + 1}
-                  </div>
-
-                  {/* Variety name (slightly bigger/bolder for #1) */}
-                  <span style={{
-                    fontSize: isTop ? 14 : 13,
-                    color: C.text,
-                    fontWeight: isTop ? 700 : 600,
-                    flex: 1,
-                  }}>
-                    {name}
-                  </span>
-
-                  {/* Count */}
-                  <span style={{
-                    fontSize: isTop ? 14 : 13,
-                    color: C.text,
-                    fontWeight: 700,
-                    fontVariantNumeric: 'tabular-nums',
-                  }}>
-                    {v.value}
-                    <span style={{ color: '#9CA3AF', fontWeight: 400, fontSize: 11, marginLeft: 4 }}>recs</span>
-                  </span>
-                </div>
-              );
-            }) : (
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+            {topVarietiesBar.length > 0 ? (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ backgroundColor: C.surfaceAlt }}>
+                    {['Rank', 'Variety', 'NSIC Code', 'Recommendations'].map((h, i) => (
+                      <th key={h} style={{
+                        padding: '11px 20px',
+                        textAlign: i === 3 ? 'right' : 'left',
+                        fontSize: 12, fontWeight: 600, color: C.textSecondary,
+                        borderBottom: `1px solid ${C.borderLight}`,
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {topVarietiesBar.map((v, i) => {
+                    // Show common_name only when it differs from nsic_code.
+                    const name = (v.label && v.label !== v.nsic_code) ? v.label : v.nsic_code;
+                    const isTop = i === 0;
+                    return (
+                      <tr key={v.nsic_code || i} style={{ borderBottom: `1px solid ${C.borderLight}` }}>
+                        <td style={{ padding: '14px 20px', position: 'relative' }}>
+                          {/* Green rail marks the leader */}
+                          {isTop && (
+                            <span style={{
+                              position: 'absolute', left: 0, top: 0, bottom: 0,
+                              width: 3, backgroundColor: C.primary,
+                            }} />
+                          )}
+                          <span style={{
+                            fontSize: 13, fontWeight: 700,
+                            color: isTop ? C.primary : C.textTertiary,
+                            fontVariantNumeric: 'tabular-nums',
+                          }}>
+                            {i + 1}
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px 20px', fontSize: 13, fontWeight: 700, color: C.text }}>
+                          {name}
+                        </td>
+                        <td style={{ padding: '14px 20px', fontSize: 12, color: C.textSecondary, whiteSpace: 'nowrap' }}>
+                          {v.nsic_code}
+                        </td>
+                        <td style={{
+                          padding: '14px 20px', textAlign: 'right',
+                          fontSize: 13, fontWeight: 700, color: C.text,
+                          fontVariantNumeric: 'tabular-nums',
+                        }}>
+                          {v.value}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
               <div style={{ padding: '32px 0', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
                 No recommendations generated yet.
               </div>
