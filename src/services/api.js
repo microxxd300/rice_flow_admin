@@ -4,17 +4,71 @@ function getToken() {
   return localStorage.getItem('admin_token');
 }
 
-async function request(method, path, body = null) {
+/* ── GET cache ────────────────────────────────────────────────────────────
+   Every page refetched on mount, so navigating away and back meant another
+   full round trip to the API (and on to Supabase) before the skeleton
+   cleared. GETs are now cached briefly and served from memory on revisit,
+   which is what makes page-to-page navigation feel instant.
+
+   - Only GETs are cached, for TTL_MS.
+   - Any write clears the cache, so a mutation is never followed by a stale
+     read.
+   - Concurrent GETs for the same path share one request instead of two.
+   - api.invalidate() lets an explicit Refresh force real network I/O.        */
+const TTL_MS = 60_000;
+const cache = new Map();     // path -> { data, ts }
+const inflight = new Map();  // path -> Promise
+let warmed = false;
+
+function cacheClear() {
+  cache.clear();
+  inflight.clear();
+  warmed = false;
+}
+
+function fire(method, path, body) {
   const headers = { 'Content-Type': 'application/json' };
   const token = getToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}/${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  return handleResponse(res);
+  return (async () => {
+    const res = await fetch(`${BASE}/${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await handleResponse(res);
+    if (method === 'GET') cache.set(path, { data, ts: Date.now() });
+    else cacheClear();          // a write invalidates every cached read
+    return data;
+  })();
+}
+
+async function request(method, path, body = null, opts = {}) {
+  const isGet = method === 'GET';
+  if (!isGet) return fire(method, path, body);
+
+  if (!opts.fresh) {
+    const hit = cache.get(path);
+    if (hit) {
+      // Stale-while-revalidate: hand back what we have straight away so the
+      // page never shows a skeleton on a revisit, and quietly refresh in the
+      // background once the entry is older than TTL_MS.
+      if (Date.now() - hit.ts >= TTL_MS && !inflight.has(path)) {
+        const bg = fire('GET', path).catch(() => {});
+        inflight.set(path, bg);
+        bg.finally(() => inflight.delete(path));
+      }
+      return hit.data;
+    }
+    const pending = inflight.get(path);
+    if (pending) return pending;
+  }
+
+  const run = fire('GET', path, body);
+  inflight.set(path, run);
+  run.finally(() => inflight.delete(path));
+  return run;
 }
 
 /**
@@ -57,6 +111,24 @@ async function handleResponse(res) {
 }
 
 export const api = {
+  /* Drop every cached GET. Call this before a manual Refresh so the button
+     performs real network I/O instead of replaying the cache. */
+  invalidate: () => cacheClear(),
+
+  /* True if this path is already cached — lets a page skip its skeleton. */
+  isWarm: (path) => cache.has(path),
+
+  /* Pull the data every page needs into the cache once, shortly after login,
+     so the first visit to each page is already warm. Errors are swallowed:
+     this is opportunistic, and each page still fetches for itself. */
+  warm() {
+    if (warmed) return;
+    warmed = true;
+    ['auth/admin-stats/', 'auth/users/', 'farms/all/', 'varieties/?all=1',
+     'progress/admin/cycles/', 'recommendations/rules/']
+      .forEach(p => { request('GET', p).catch(() => {}); });
+  },
+
   login:        (email, password) => request('POST', 'auth/login/', { email, password }),
   stats:        ()                => request('GET',  'auth/admin-stats/'),
   systemHealth: ()                => request('GET',  'auth/system-health/'),

@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { api } from '../services/api';
+import { roleOf } from '../permissions';
 
 const AuthContext = createContext(null);
 
@@ -26,7 +27,11 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{
+      token, user, login, logout,
+      isAuthenticated: !!token,
+      role: roleOf(user),
+    }}>
       {children}
     </AuthContext.Provider>
   );

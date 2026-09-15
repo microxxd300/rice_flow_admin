@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { C, pastel } from '../theme';
+import { C, hatchCss, CHART_GREEN } from '../theme';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { canAccess } from '../permissions';
 import { reverseGeocode, getCachedGeocode } from '../services/geocode';
 import Skeleton, { SkeletonStyles, SkelStatCard, SkelListRow } from '../components/Skeleton';
 import {
-  Users as UsersIcon, Tractor, Sparkles, TrendingUp,
-  Sprout, MapPin, FileBarChart, SlidersHorizontal, Plus,
+  Sparkles, MapPin, SlidersHorizontal, Plus,
   UserPlus, Wheat, Activity, Wifi, RefreshCw, ChevronRight, ArrowUpRight,
 } from 'lucide-react';
-import { PieChart, Pie, Cell, Sector, Label } from 'recharts';
+import { PieChart, Pie, Cell, Label } from 'recharts';
 
 const shadow = '0 1px 6px rgba(26,26,46,0.06), 0 0 1px rgba(26,26,46,0.04)';
 const card   = { backgroundColor: C.surface, borderRadius: 14, boxShadow: shadow, border: `1px solid ${C.borderLight}`, overflow: 'hidden' };
@@ -19,114 +20,369 @@ const ECOSYSTEM_LABEL = {
   rainfed_lowland:   'Rainfed Lowland',
   upland:            'Upland',
 };
-/* Green ramp drawn from the theme so the chart reads as one family */
 const ECOSYSTEM_COLOR = {
-  irrigated_lowland: C.primaryDark,
-  rainfed_lowland:   C.primary,
-  upland:            C.primaryLight,
+  irrigated_lowland: CHART_GREEN[0],
+  rainfed_lowland:   CHART_GREEN[1],
+  upland:            CHART_GREEN[3],
 };
 
+/* Activity icons ride the same green ramp as the charts and quick actions —
+   one shared tint behind them, the icon itself carrying the step. */
 const EVENT_META = {
-  user_registered: { icon: UserPlus,    color: C.info,      bg: C.infoLight,      route: '/users' },
-  farm_pinned:     { icon: MapPin,      color: C.primary,   bg: C.primaryLighter, route: '/map'   },
-  recommendation:  { icon: Sparkles,    color: C.accent,    bg: C.accentLight,    route: '/farms' },
-  yield_logged:    { icon: Wheat,       color: C.success,   bg: C.successLight,   route: '/farms' },
+  user_registered: { icon: UserPlus, color: CHART_GREEN[0], bg: C.primaryLighter, route: '/users' },
+  farm_pinned:     { icon: MapPin,   color: CHART_GREEN[1], bg: C.primaryLighter, route: '/map'   },
+  recommendation:  { icon: Sparkles, color: CHART_GREEN[2], bg: C.primaryLighter, route: '/farms' },
+  yield_logged:    { icon: Wheat,    color: CHART_GREEN[3], bg: C.primaryLighter, route: '/farms' },
 };
 
 /* -------------------------------------------------------------------------- */
 /*  Atoms                                                                     */
 /* -------------------------------------------------------------------------- */
 
-function StatCard({ label, value, unit, sub, Icon, delta, tint = pastel[0] }) {
-  // delta = { value: number, label: string, positive: bool }
-  return (
-    <div style={{
-      backgroundColor: tint.bg, borderRadius: 18, padding: '18px 20px',
-      border: '1px solid rgba(255,255,255,0.6)',
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+/* KPI card, per the design reference: the FIRST card in the row is filled
+   solid green with white text, the rest stay white. Layout is label top-left,
+   circular outline arrow top-right, then a large number, then a caption. */
+function StatCard({ label, value, unit, sub, delta, featured = false, to }) {
+  const [hover, setHover] = useState(false);
+
+  const fg       = featured ? '#FFFFFF' : C.text;
+  const fgMuted  = featured ? 'rgba(255,255,255,0.75)' : C.textSecondary;
+  const hairline = featured ? 'rgba(255,255,255,0.40)' : C.border;
+
+  const body = (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        backgroundColor: featured ? C.primary : C.surface,
+        borderRadius: 18,
+        padding: '18px 20px 20px',
+        border: `1px solid ${featured ? C.primary : C.borderLight}`,
+        boxShadow: featured
+          ? '0 6px 18px rgba(31,107,63,0.20)'
+          : '0 1px 2px rgba(17,21,17,0.05)',
+        transform: hover ? 'translateY(-2px)' : 'none',
+        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+        height: '100%', boxSizing: 'border-box',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <p style={{ fontSize: 12.5, fontWeight: 600, color: fgMuted }}>{label}</p>
         <div style={{
-          width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.75)',
+          width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+          border: `1.5px solid ${hairline}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backgroundColor: hover && !featured ? C.primaryLighter : 'transparent',
+          transition: 'background-color 0.15s ease',
         }}>
-          <Icon size={16} color={tint.icon} />
-        </div>
-        <div style={{
-          width: 26, height: 26, borderRadius: '50%', backgroundColor: C.primary,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <ArrowUpRight size={14} color="#fff" strokeWidth={2.5} />
+          <ArrowUpRight size={13} color={featured ? '#FFFFFF' : C.primary} strokeWidth={2.5} />
         </div>
       </div>
 
-      <p style={{ fontSize: 12, fontWeight: 500, color: C.textSecondary, marginBottom: 8 }}>{label}</p>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, marginTop: 14 }}>
+        <p style={{
+          fontSize: 34, fontWeight: 800, lineHeight: 1, color: fg,
+          letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums',
+        }}>
+          {value}
+        </p>
+        {unit && <p style={{ fontSize: 12, color: fgMuted, marginBottom: 3 }}>{unit}</p>}
+      </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5 }}>
-          <p style={{ fontSize: 28, fontWeight: 800, lineHeight: 1, color: C.text, fontVariantNumeric: 'tabular-nums' }}>{value}</p>
-          {unit && <p style={{ fontSize: 11, color: C.textSecondary, marginBottom: 2 }}>{unit}</p>}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, minHeight: 18 }}>
+        {sub && <p style={{ fontSize: 11.5, color: fgMuted }}>{sub}</p>}
         {delta && (
           <span style={{
-            fontSize: 11, fontWeight: 700, color: delta.positive ? C.primaryDark : C.error,
-            backgroundColor: 'rgba(255,255,255,0.75)',
-            padding: '3px 9px', borderRadius: 9999,
+            fontSize: 10.5, fontWeight: 700,
+            color: featured ? '#FFFFFF' : (delta.positive ? C.primary : C.error),
+            backgroundColor: featured
+              ? 'rgba(255,255,255,0.18)'
+              : (delta.positive ? C.primaryLighter : C.errorLight),
+            padding: '2px 8px', borderRadius: 9999,
             fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
           }}>
-            {delta.positive ? '+' : ''}{delta.value}
+            {delta.positive ? '↑ ' : '↓ '}{delta.value}
           </span>
         )}
       </div>
+    </div>
+  );
 
-      {sub && <p style={{ fontSize: 11, color: C.textSecondary, marginTop: 8, opacity: 0.8 }}>{sub}</p>}
+  return to
+    ? <Link to={to} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>{body}</Link>
+    : body;
+}
+
+/* Same anatomy as StatCard — label top-left, circular outline arrow top-right,
+   headline, then a caption row. The headline here is text rather than a number,
+   so it sits at 20px instead of 34px but keeps the same weight and rhythm. */
+function HighlightCard({ label, title, value, sub, placeholder, to }) {
+  const [hover, setHover] = useState(false);
+
+  const body = (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        backgroundColor: C.surface,
+        borderRadius: 18,
+        padding: '18px 20px 20px',
+        border: `1px solid ${C.borderLight}`,
+        boxShadow: '0 1px 2px rgba(17,21,17,0.05)',
+        transform: hover && !placeholder ? 'translateY(-2px)' : 'none',
+        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+        height: '100%', boxSizing: 'border-box',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <p style={{ fontSize: 12.5, fontWeight: 600, color: C.textSecondary }}>{label}</p>
+        <div style={{
+          width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+          border: `1.5px solid ${placeholder ? C.borderLight : C.border}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backgroundColor: hover && !placeholder ? C.primaryLighter : 'transparent',
+          transition: 'background-color 0.15s ease',
+        }}>
+          <ArrowUpRight
+            size={13}
+            color={placeholder ? C.textTertiary : C.primary}
+            strokeWidth={2.5}
+          />
+        </div>
+      </div>
+
+      <p style={{
+        fontSize: 20, fontWeight: 800, lineHeight: 1.2, marginTop: 14,
+        letterSpacing: '-0.01em',
+        color: placeholder ? C.textTertiary : C.text,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
+        {title}
+      </p>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, minHeight: 18 }}>
+        {value && (
+          <span style={{
+            fontSize: 10.5, fontWeight: 700, color: C.primary,
+            backgroundColor: C.primaryLighter,
+            padding: '2px 8px', borderRadius: 9999, whiteSpace: 'nowrap',
+          }}>
+            {value}
+          </span>
+        )}
+        {sub && <span style={{ fontSize: 11.5, color: C.textSecondary }}>{sub}</span>}
+      </div>
+    </div>
+  );
+
+  return to && !placeholder
+    ? <Link to={to} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>{body}</Link>
+    : body;
+}
+
+/* Cellular-style signal bars standing in for the latency figure and status
+   word. Bar count encodes responsiveness; the full detail stays available as
+   a tooltip so nothing is actually lost.
+
+     4 bars  under 300 ms      1 bar   over 1500 ms
+     3 bars  under 800 ms      0 bars  unreachable
+     2 bars  under 1500 ms     hollow  reachable but not timed (e.g. an API
+                                       that is configured, never pinged) */
+function SignalBars({ ok, latencyMs, status }) {
+  const HEIGHTS = [7, 11, 15, 19];
+
+  let filled;
+  if (!ok) filled = 0;
+  else if (latencyMs == null) filled = null;          // configured, untimed
+  else if (latencyMs < 300) filled = 4;
+  else if (latencyMs < 800) filled = 3;
+  else if (latencyMs < 1500) filled = 2;
+  else filled = 1;
+
+  const tip = [
+    status,
+    latencyMs != null ? `${latencyMs} ms` : null,
+  ].filter(Boolean).join(' · ');
+
+  // Weak but working reads amber; healthy reads green; down reads red.
+  const strong = filled === null || filled >= 3;
+  const litColor = !ok ? C.error : strong ? C.primary : C.warning;
+
+  return (
+    <div
+      title={tip}
+      aria-label={tip}
+      style={{ display: 'flex', alignItems: 'flex-end', gap: 2.5, height: 19, flexShrink: 0 }}
+    >
+      {HEIGHTS.map((h, i) => {
+        const lit = filled === null ? false : i < filled;
+        return (
+          <span
+            key={i}
+            style={{
+              width: 4, height: h, borderRadius: 2,
+              backgroundColor: lit ? litColor : 'transparent',
+              border: lit ? 'none' : `1.5px solid ${filled === null ? C.primaryLight : C.border}`,
+              boxSizing: 'border-box',
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
 
-function HighlightCard({ label, Icon, iconColor, iconBg, title, value, sub, placeholder }) {
+/* One row of the varieties table. Follows the portfolio-table reference:
+   an avatar tile, the name with a secondary line beneath, then a run of
+   label-above-value metric columns, and a verdict pill on the right. The
+   column labels repeat on every row rather than sitting in one header, which
+   is what gives that layout its scannable rhythm. */
+/* Shared vertical rhythm so every column's label sits on one line and every
+   value sits on the next. Both rows have explicit line-heights, otherwise
+   differing glyph metrics between columns nudge the baselines apart. */
+const CELL_LABEL = {
+  fontSize: 10, lineHeight: '13px', color: C.textTertiary,
+  fontWeight: 500, margin: 0, whiteSpace: 'nowrap',
+};
+const CELL_VALUE = {
+  fontSize: 13, lineHeight: '18px', fontWeight: 700, color: C.text,
+  fontVariantNumeric: 'tabular-nums', margin: 0,
+};
+
+function MetricCell({ label, children, width, align = 'left' }) {
   return (
-    <div style={{
-      ...card,
-      padding: '16px 18px',
-      display: 'flex', alignItems: 'flex-start', gap: 12,
-      opacity: placeholder ? 0.7 : 1,
-    }}>
+    <div style={{ width, flexShrink: 0, textAlign: align }}>
+      <p style={CELL_LABEL}>{label}</p>
+      <div style={{ ...CELL_VALUE, marginTop: 4 }}>{children}</div>
+    </div>
+  );
+}
+
+function VarietyRow({
+  rank, name, code, color, recs, avgYield, share, barPct,
+  ecoLabel, verdict, isTop, last,
+}) {
+  const [hover, setHover] = useState(false);
+
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        // Columns are top-aligned so every label sits on one line and every
+        // value on the next; the tile and the pill re-centre themselves.
+        display: 'flex', alignItems: 'flex-start', gap: 18,
+        padding: '15px 12px',
+        borderRadius: 12,
+        backgroundColor: hover ? C.surfaceAlt : 'transparent',
+        borderBottom: last ? 'none' : `1px solid ${C.borderLight}`,
+        transition: 'background-color 0.15s ease',
+      }}
+    >
+      {/* Avatar tile — rank on the variety's ecosystem colour */}
       <div style={{
-        width: 38, height: 38, borderRadius: 10,
-        backgroundColor: iconBg,
+        width: 36, height: 36, borderRadius: 11, flexShrink: 0,
+        backgroundColor: color, alignSelf: 'center',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
       }}>
-        <Icon size={16} color={iconColor} />
+        <span style={{ fontSize: 13, fontWeight: 800, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>
+          {rank}
+        </span>
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 10, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-          {label}
-        </p>
-        <p style={{ fontSize: 14, fontWeight: 700, color: placeholder ? '#9CA3AF' : C.text, marginTop: 4, lineHeight: 1.3 }}>
-          {title}
-        </p>
-        {(value || sub) && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-            {value && (
-              <span style={{ fontSize: 11, color: iconColor, fontWeight: 600 }}>{value}</span>
-            )}
-            {sub && (
-              <span style={{ fontSize: 11, color: '#9CA3AF' }}>{sub}</span>
-            )}
+
+      {/* Name column — same label/value rhythm as the metric cells, with the
+          share bar hanging below the value row. */}
+      <div style={{ flex: 1, minWidth: 150 }}>
+        <p style={CELL_LABEL}>Variety</p>
+        <div style={{
+          ...CELL_VALUE, marginTop: 4,
+          display: 'flex', alignItems: 'baseline', gap: 7, minWidth: 0,
+        }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {name}
+          </span>
+          {code && code !== name && (
+            <span style={{
+              fontSize: 11, fontWeight: 400, lineHeight: '18px',
+              color: C.textTertiary, flexShrink: 0,
+            }}>
+              {code}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+          <div style={{
+            flex: 1, height: 5, borderRadius: 9999, overflow: 'hidden',
+            background: hatchCss(), border: `1px solid ${C.borderLight}`,
+          }}>
+            <div style={{
+              width: `${barPct}%`, height: '100%', borderRadius: 9999,
+              backgroundColor: isTop ? C.primary : C.primaryLight,
+              transition: 'width 0.4s ease',
+            }} />
           </div>
-        )}
+          <span style={{
+            fontSize: 10.5, lineHeight: '13px', color: C.textTertiary,
+            flexShrink: 0, fontVariantNumeric: 'tabular-nums',
+          }}>
+            {share}%
+          </span>
+        </div>
       </div>
+
+      <MetricCell label="Picks" width={54}>{recs}</MetricCell>
+
+      <MetricCell label="Avg Yield" width={78}>
+        {avgYield} <span style={{ fontWeight: 400, fontSize: 11, color: C.textTertiary }}>t/ha</span>
+      </MetricCell>
+
+      <MetricCell label="Ecosystem" width={118}>
+        <span style={{
+          color, fontSize: 12.5, fontWeight: 600,
+          display: 'block', whiteSpace: 'nowrap',
+          overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          {ecoLabel}
+        </span>
+      </MetricCell>
+
+      {/* Verdict pill — solid for the leader, soft for the rest */}
+      <span style={{
+        flexShrink: 0, alignSelf: 'center', textAlign: 'center',
+        width: 104, boxSizing: 'border-box',
+        fontSize: 11, fontWeight: 700, lineHeight: '18px', whiteSpace: 'nowrap',
+        padding: '5px 0', borderRadius: 9999,
+        backgroundColor: isTop ? C.primary : C.primaryLighter,
+        color: isTop ? '#FFFFFF' : C.primary,
+      }}>
+        {verdict}
+      </span>
     </div>
   );
 }
 
 function SectionHeader({ title, sub, right }) {
   return (
-    <div style={{ padding: '16px 20px', borderBottom: `1px solid ${C.borderLight}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-      <div>
-        <p style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{title}</p>
-        {sub && <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>{sub}</p>}
+    <div style={{
+      padding: '16px 20px', borderBottom: `1px solid ${C.borderLight}`,
+      display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+      // Fixed line-heights and a single-line subtitle keep every card header
+      // exactly the same height, so side-by-side cards start their content on
+      // the same baseline.
+      minHeight: 66, boxSizing: 'border-box', flexShrink: 0,
+    }}>
+      <div style={{ minWidth: 0 }}>
+        <p style={{ fontSize: 15, lineHeight: '20px', fontWeight: 700, color: C.text }}>
+          {title}
+        </p>
+        {sub && (
+          <p style={{
+            fontSize: 12, lineHeight: '16px', color: C.textTertiary, marginTop: 2,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {sub}
+          </p>
+        )}
       </div>
       {right}
     </div>
@@ -158,16 +414,21 @@ function timeAgo(iso) {
 /* -------------------------------------------------------------------------- */
 
 export default function Dashboard() {
+  const { role } = useAuth();
   const [stats, setStats]         = useState(null);
   const [health, setHealth]       = useState(null);
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefresh]  = useState(false);
   const [lastUpdated, setUpdated] = useState(null);
   const [topLocation, setTopLocation] = useState(null);  // resolved Nominatim address
-  const [activeEco, setActiveEco] = useState(0);         // highlighted pie slice
 
   const loadAll = async ({ silent = false } = {}) => {
-    if (!silent) setRefresh(true);
+    // A manual Refresh must hit the network; the silent mount load is happy
+    // to be served from the GET cache.
+    if (!silent) {
+      setRefresh(true);
+      api.invalidate();
+    }
     try {
       const [s, h] = await Promise.allSettled([api.stats(), api.systemHealth()]);
       if (s.status === 'fulfilled') setStats(s.value);
@@ -287,24 +548,15 @@ export default function Dashboard() {
   const topLocationRaw  = stats?.top_location;            // {lat, lng, count} or null
   const userGrowthDelta = newUsersWeek - newUsersPrev;
 
-  const ecosystemPie = (stats?.farms_by_ecosystem ?? []).map(e => ({
+  const ecosystemPie = (stats?.farms_by_ecosystem ?? []).map((e, i) => ({
     key:   e.ecosystem,
     label: ECOSYSTEM_LABEL[e.ecosystem] || e.ecosystem,
-    color: ECOSYSTEM_COLOR[e.ecosystem] || '#9CA3AF',
+    // Known ecosystems keep their fixed step; anything unexpected still draws
+    // from the green ramp rather than dropping to gray.
+    color: ECOSYSTEM_COLOR[e.ecosystem] || CHART_GREEN[i % CHART_GREEN.length],
     value: e.count,
   }));
   const ecoTotal = ecosystemPie.reduce((s, e) => s + e.value, 0);
-
-  // Active slice pops out and gains a thin outer halo ring.
-  const renderEcoShape = ({ outerRadius = 0, ...props }) =>
-    props.index === activeEco ? (
-      <g>
-        <Sector {...props} outerRadius={outerRadius + 8} />
-        <Sector {...props} innerRadius={outerRadius + 12} outerRadius={outerRadius + 20} />
-      </g>
-    ) : (
-      <Sector {...props} outerRadius={outerRadius} />
-    );
 
   const topVarietiesBar = (stats?.top_varieties ?? []).map(v => ({
     nsic_code: v.nsic_code,
@@ -312,7 +564,15 @@ export default function Dashboard() {
     value:     v.rec_count,
     avg_yield: Number(v.avg_yield_t_ha || 0).toFixed(2),
     color:     ECOSYSTEM_COLOR[v.ecosystem] || C.primary,
+    ecoLabel:  ECOSYSTEM_LABEL[v.ecosystem] || v.ecosystem || '—',
   }));
+
+  // Largest recommendation count, so each variety row can draw its share as a
+  // proportional bar: solid green for the share, hatched for the remainder.
+  const maxRecs = Math.max(1, ...topVarietiesBar.map(v => v.value || 0));
+  // Total picks, so "Share" reads as a share of all recommendations rather
+  // than of the leader.
+  const totalRecPicks = topVarietiesBar.reduce((s, v) => s + (v.value || 0), 0) || 1;
 
   const events = stats?.recent_activity ?? [];
 
@@ -356,13 +616,13 @@ export default function Dashboard() {
       {/* ── 4 KPI cards ──────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
         <StatCard
+          featured
           label="Registered Farmers"
           value={totalUsers}
           unit="farmers"
           sub={newUsersWeek > 0 ? `this week` : 'no new this week'}
           delta={newUsersWeek > 0 ? { value: newUsersWeek, positive: userGrowthDelta >= 0 } : null}
-          Icon={UsersIcon}
-          tint={pastel[0]}
+          to={canAccess(role, '/users') ? "/users" : undefined}
         />
         <StatCard
           label="Active Farms"
@@ -370,8 +630,7 @@ export default function Dashboard() {
           unit={`of ${totalFarms}`}
           sub={`${totalHectares.toLocaleString()} ha cultivated`}
           delta={newFarmsWeek > 0 ? { value: newFarmsWeek, positive: true } : null}
-          Icon={Tractor}
-          tint={pastel[1]}
+          to="/map"
         />
         <StatCard
           label="Recommendations"
@@ -379,16 +638,14 @@ export default function Dashboard() {
           unit="total"
           sub={recsThisMonth > 0 ? `${recsThisMonth} this month` : `${activeVars} active varieties`}
           delta={recsThisMonth > 0 ? { value: recsThisMonth, positive: true } : null}
-          Icon={Sparkles}
-          tint={pastel[2]}
+          to="/farms"
         />
         <StatCard
           label="Average Yield"
           value={avgYield}
           unit="t/ha"
           sub={`${stats?.yield_records ?? 0} harvest record${stats?.yield_records === 1 ? '' : 's'} · ${totalHarvest} t total`}
-          Icon={TrendingUp}
-          tint={pastel[3]}
+          to="/farms"
         />
       </div>
 
@@ -398,9 +655,7 @@ export default function Dashboard() {
           {/* Top Location — Nominatim resolved */}
           <HighlightCard
             label="Top Location"
-            Icon={MapPin}
-            iconColor={C.primary}
-            iconBg={C.primaryLighter}
+            to="/map"
             title={
               topLocationRaw
                 ? (topLocation
@@ -423,9 +678,7 @@ export default function Dashboard() {
           {/* Total Harvest */}
           <HighlightCard
             label="Total Harvest"
-            Icon={Wheat}
-            iconColor={C.success}
-            iconBg={C.successLight}
+            to="/farms"
             title={totalHarvest > 0 ? `${totalHarvest.toLocaleString()} tonnes` : 'No harvests yet'}
             value={totalHarvest > 0 ? `${stats?.yield_records ?? 0} record${stats?.yield_records === 1 ? '' : 's'}` : ''}
             sub={totalHarvest > 0 ? 'Cumulative across all cycles' : null}
@@ -435,9 +688,7 @@ export default function Dashboard() {
           {/* New Farmers */}
           <HighlightCard
             label="New Farmers"
-            Icon={UserPlus}
-            iconColor={C.info}
-            iconBg={C.infoLight}
+            to={canAccess(role, '/users') ? "/users" : undefined}
             title={newUsersWeek > 0 ? `+${newUsersWeek} this week` : 'No new this week'}
             value={newUsersWeek > 0 && newUsersPrev > 0
               ? `${userGrowthDelta >= 0 ? '+' : ''}${userGrowthDelta} vs last week`
@@ -452,11 +703,12 @@ export default function Dashboard() {
       {/* Donut column is fixed so the square card hugs the 300px chart. */}
       <div style={{ display: 'grid', gridTemplateColumns: '392px minmax(0, 1fr)', gap: 20 }}>
 
-        {/* Farms by Ecosystem — interactive donut, square card */}
-        <div style={{ ...card, height: 392, display: 'flex', flexDirection: 'column' }}>
+        {/* Farms by Ecosystem — donut. minHeight rather than a fixed height so
+            the grid can stretch both cards to a common height. */}
+        <div style={{ ...card, minHeight: 392, display: 'flex', flexDirection: 'column' }}>
           <SectionHeader
             title="Farms by Ecosystem"
-            sub="Hover a slice to inspect it"
+            sub="Share of registered farms by water regime"
           />
 
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '4px 12px 22px' }}>
@@ -472,8 +724,6 @@ export default function Dashboard() {
                     outerRadius={100}
                     stroke={C.surface}
                     strokeWidth={4}
-                    shape={renderEcoShape}
-                    onMouseEnter={(_, i) => setActiveEco(i)}
                     isAnimationActive={false}
                   >
                     {ecosystemPie.map((e, i) => <Cell key={i} fill={e.color} />)}
@@ -481,18 +731,15 @@ export default function Dashboard() {
                       position="center"
                       content={({ viewBox }) => {
                         if (!viewBox || !('cx' in viewBox)) return null;
-                        const active = ecosystemPie[activeEco] ?? ecosystemPie[0];
-                        const pct = ecoTotal ? Math.round((active.value / ecoTotal) * 100) : 0;
+                        const { cx, cy } = viewBox;
+                        // Static: the grand total, as in the reference donut.
                         return (
-                          <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
-                            <tspan x={viewBox.cx} y={viewBox.cy - 8} fill={C.text} fontSize="30" fontWeight="800">
-                              {active.value}
+                          <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
+                            <tspan x={cx} y={cy - 6} fill={C.text} fontSize="32" fontWeight="800">
+                              {ecoTotal.toLocaleString()}
                             </tspan>
-                            <tspan x={viewBox.cx} y={viewBox.cy + 16} fill="#9CA3AF" fontSize="12">
-                              {active.label}
-                            </tspan>
-                            <tspan x={viewBox.cx} y={viewBox.cy + 34} fill={active.color} fontSize="12" fontWeight="700">
-                              {pct}% of {ecoTotal}
+                            <tspan x={cx} y={cy + 20} fill={C.textSecondary} fontSize="12.5">
+                              {ecoTotal === 1 ? 'Farm' : 'Farms'}
                             </tspan>
                           </text>
                         );
@@ -503,22 +750,13 @@ export default function Dashboard() {
 
                 {/* Legend */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px 18px', marginTop: 4 }}>
-                  {ecosystemPie.map((e, i) => (
-                    <button
-                      key={e.key}
-                      onMouseEnter={() => setActiveEco(i)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 7,
-                        background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        opacity: i === activeEco ? 1 : 0.55,
-                      }}
-                    >
+                  {ecosystemPie.map(e => (
+                    <div key={e.key} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                       <span style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: e.color, flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, color: C.text, fontWeight: i === activeEco ? 700 : 500 }}>
+                      <span style={{ fontSize: 12, color: C.text, fontWeight: 500 }}>
                         {e.label}
                       </span>
-                    </button>
+                    </div>
                   ))}
                 </div>
               </>
@@ -528,72 +766,46 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Top Recommended Varieties — clean table */}
-        <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
+        {/* Top Recommended Varieties — table of the engine's most-picked rows */}
+        <div style={{ ...card, minHeight: 392, display: 'flex', flexDirection: 'column' }}>
           <SectionHeader
             title="Top Recommended Varieties"
             sub="The varieties appearing most often in the engine's top-3 picks"
           />
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-            {topVarietiesBar.length > 0 ? (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: C.surfaceAlt }}>
-                    {['Rank', 'Variety', 'NSIC Code', 'Recommendations'].map((h, i) => (
-                      <th key={h} style={{
-                        padding: '11px 20px',
-                        textAlign: i === 3 ? 'right' : 'left',
-                        fontSize: 12, fontWeight: 600, color: C.textSecondary,
-                        borderBottom: `1px solid ${C.borderLight}`,
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {topVarietiesBar.map((v, i) => {
-                    // Show common_name only when it differs from nsic_code.
-                    const name = (v.label && v.label !== v.nsic_code) ? v.label : v.nsic_code;
-                    const isTop = i === 0;
-                    return (
-                      <tr key={v.nsic_code || i} style={{ borderBottom: `1px solid ${C.borderLight}` }}>
-                        <td style={{ padding: '14px 20px', position: 'relative' }}>
-                          {/* Green rail marks the leader */}
-                          {isTop && (
-                            <span style={{
-                              position: 'absolute', left: 0, top: 0, bottom: 0,
-                              width: 3, backgroundColor: C.primary,
-                            }} />
-                          )}
-                          <span style={{
-                            fontSize: 13, fontWeight: 700,
-                            color: isTop ? C.primary : C.textTertiary,
-                            fontVariantNumeric: 'tabular-nums',
-                          }}>
-                            {i + 1}
-                          </span>
-                        </td>
-                        <td style={{ padding: '14px 20px', fontSize: 13, fontWeight: 700, color: C.text }}>
-                          {name}
-                        </td>
-                        <td style={{ padding: '14px 20px', fontSize: 12, color: C.textSecondary, whiteSpace: 'nowrap' }}>
-                          {v.nsic_code}
-                        </td>
-                        <td style={{
-                          padding: '14px 20px', textAlign: 'right',
-                          fontSize: 13, fontWeight: 700, color: C.text,
-                          fontVariantNumeric: 'tabular-nums',
-                        }}>
-                          {v.value}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            ) : (
+          <div style={{
+            flex: 1, minHeight: 0,
+            padding: '12px 24px 16px',
+            display: 'flex', flexDirection: 'column',
+            // Rows sit at the top; leftover space stays at the bottom rather
+            // than stretching the rows to fill the taller card.
+            justifyContent: 'flex-start',
+          }}>
+            {topVarietiesBar.length > 0 ? topVarietiesBar.map((v, i) => {
+              // Show common_name only when it differs from nsic_code,
+              // otherwise nsic_code alone is enough.
+              const name = (v.label && v.label !== v.nsic_code) ? v.label : v.nsic_code;
+              const isTop  = i === 0;
+              const share  = Math.round((v.value / totalRecPicks) * 100);
+              const verdict = isTop ? 'Top Pick' : i < 3 ? 'Recommended' : 'Considered';
+
+              return (
+                <VarietyRow
+                  key={v.nsic_code || i}
+                  rank={i + 1}
+                  name={name}
+                  code={v.nsic_code}
+                  color={v.color}
+                  recs={v.value}
+                  avgYield={v.avg_yield}
+                  share={share}
+                  barPct={Math.round((v.value / maxRecs) * 100)}
+                  ecoLabel={v.ecoLabel}
+                  verdict={verdict}
+                  isTop={isTop}
+                  last={i === topVarietiesBar.length - 1}
+                />
+              );
+            }) : (
               <div style={{ padding: '32px 0', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
                 No recommendations generated yet.
               </div>
@@ -680,11 +892,13 @@ export default function Dashboard() {
             <SectionHeader title="Quick Actions" sub="Shortcut to admin tasks" />
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[
-                { to: '/users',    label: 'Add User',            sub: 'Create a new farmer or admin account',     Icon: UserPlus,        color: C.info    },
-                { to: '/datasets', label: 'Add Rice Variety',    sub: 'Register a new NSIC variety',              Icon: Plus,            color: C.primary },
-                { to: '/rules',    label: 'Edit Suitability Rules', sub: 'Update FAO ranges and WLC weights',      Icon: SlidersHorizontal, color: C.accent  },
-                { to: '/map',      label: 'View Farm Map',       sub: 'Geographic distribution of farms',         Icon: MapPin,          color: C.warning },
-              ].map(a => (
+                /* One hue, four steps of the brand ramp — the actions stay
+                   distinguishable without introducing blue/gold/orange. */
+                { to: '/users',    label: 'Add User',               sub: 'Create a new farmer or admin account', Icon: UserPlus,          color: CHART_GREEN[0] },
+                { to: '/datasets', label: 'Add Rice Variety',       sub: 'Register a new NSIC variety',          Icon: Plus,              color: CHART_GREEN[1] },
+                { to: '/rules',    label: 'Edit Suitability Rules', sub: 'Update FAO ranges and WLC weights',    Icon: SlidersHorizontal, color: CHART_GREEN[2] },
+                { to: '/map',      label: 'View Farm Map',          sub: 'Geographic distribution of farms',     Icon: MapPin,            color: CHART_GREEN[3] },
+              ].filter(a => canAccess(role, a.to)).map(a => (
                 <Link key={a.to} to={a.to} style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '11px 14px',
@@ -698,10 +912,12 @@ export default function Dashboard() {
                   onMouseLeave={e => { e.currentTarget.style.backgroundColor = C.surface; }}>
                   <div style={{
                     width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                    backgroundColor: a.color + '15',
+                    // One shared tint so the tiles read as a set; the icon
+                    // itself carries the step of the ramp.
+                    backgroundColor: C.primaryLighter,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <a.Icon size={14} color={a.color} />
+                    <a.Icon size={15} color={a.color} strokeWidth={2.2} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{a.label}</p>
@@ -735,14 +951,7 @@ export default function Dashboard() {
                     backgroundColor: s.ok ? C.success : C.error, flexShrink: 0,
                   }} />
                   <span style={{ fontSize: 12, color: C.text, flex: 1 }}>{s.label}</span>
-                  {s.latency_ms != null && (
-                    <span style={{ fontSize: 10, color: '#9CA3AF', fontFamily: 'ui-monospace, monospace' }}>
-                      {s.latency_ms} ms
-                    </span>
-                  )}
-                  <span style={{ fontSize: 11, fontWeight: 600, color: s.ok ? C.success : C.error }}>
-                    {s.status}
-                  </span>
+                  <SignalBars ok={s.ok} latencyMs={s.latency_ms} status={s.status} />
                 </div>
               ))}
               {!health && (
