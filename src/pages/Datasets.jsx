@@ -4,7 +4,7 @@ import { api } from '../services/api';
 import { SkeletonStyles, SkelTableRow } from '../components/Skeleton';
 import {
   Search, Pencil, Trash2, Plus, Database, Sprout, CheckCircle2,
-  ChevronLeft, ChevronRight, X, AlertTriangle, Leaf,
+  ChevronLeft, ChevronRight, X, AlertTriangle, Leaf, Download,
 } from 'lucide-react';
 
 const PAGE_SIZE = 10;
@@ -18,6 +18,22 @@ const ECOSYSTEMS = [
   { value: 'rainfed_lowland',   label: 'Rainfed Lowland'   },
   { value: 'upland',            label: 'Upland'            },
 ];
+/* Quote a CSV cell only when it needs it: a value containing a comma,
+   double-quote or newline is wrapped, and embedded quotes are doubled
+   (RFC 4180). Keeps the file readable while staying Excel-safe. */
+function csvCell(value) {
+  const s = value === null || value === undefined ? '' : String(value);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/* Local (not UTC) yyyy-mm-dd, so a late-evening export isn't stamped
+   with tomorrow's date. */
+function todayStamp() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 const TOLERANCES = [
   { value: 'low',      label: 'Low'      },
   { value: 'moderate', label: 'Moderate' },
@@ -544,6 +560,42 @@ export default function Datasets() {
     ? (list.reduce((s, v) => s + (v.avg_yield_t_ha || 0), 0) / list.length).toFixed(2)
     : '0.00';
 
+  /* Exports exactly what the table is showing — every active filter
+     applies, but not pagination, so all matching rows are included. */
+  const handleExport = () => {
+    if (!filtered.length) return;
+
+    const ecoLabel = Object.fromEntries(ECOSYSTEMS.map(e => [e.value, e.label]));
+    const headers = [
+      'NSIC Code', 'Common Name', 'Ecosystem', 'Maturity (days)',
+      'Average Yield (t/ha)', 'Maximum Yield (t/ha)', 'Status',
+    ];
+    const rows = filtered.map(v => [
+      v.nsic_code,
+      v.common_name,
+      ecoLabel[v.ecosystem] || v.ecosystem,
+      v.maturity_days,
+      v.avg_yield_t_ha,
+      v.max_yield_t_ha,
+      v.is_active ? 'Active' : 'Inactive',
+    ]);
+
+    const csv = [headers, ...rows]
+      .map(row => row.map(csvCell).join(','))
+      .join('\r\n');
+
+    // Leading BOM so Excel opens it as UTF-8 rather than mangling accents.
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `rice-varieties-${todayStamp()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleSaved = (saved, wasEditing) => {
     setList(prev => wasEditing
       ? prev.map(v => v.id === saved.id ? saved : v)
@@ -575,17 +627,37 @@ export default function Datasets() {
             Manage the NSIC-registered rice variety dataset that feeds the recommendation engine.
           </p>
         </div>
-        <button
-          onClick={() => { setEditing(null); setModalOpen(true); }}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            backgroundColor: C.primary, color: '#fff',
-            border: 'none', borderRadius: 10, padding: '9px 16px',
-            fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-          }}>
-          <Plus size={14} />
-          Add Variety
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            onClick={handleExport}
+            disabled={filtered.length === 0}
+            title={filtered.length
+              ? `Export ${filtered.length} ${filtered.length === 1 ? 'variety' : 'varieties'} as CSV`
+              : 'No varieties match the current filters'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              backgroundColor: C.surface,
+              color: filtered.length ? C.text : C.textTertiary,
+              border: `1px solid ${C.borderLight}`, borderRadius: 10, padding: '9px 16px',
+              fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+              cursor: filtered.length ? 'pointer' : 'not-allowed',
+              opacity: filtered.length ? 1 : 0.6,
+            }}>
+            <Download size={14} />
+            Export CSV
+          </button>
+          <button
+            onClick={() => { setEditing(null); setModalOpen(true); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              backgroundColor: C.primary, color: '#fff',
+              border: 'none', borderRadius: 10, padding: '9px 16px',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+            <Plus size={14} />
+            Add Variety
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
