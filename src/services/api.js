@@ -6,6 +6,49 @@ function getToken() {
   return localStorage.getItem('admin_token');
 }
 
+/* ── Token refresh ────────────────────────────────────────────────────────
+   Access tokens are short-lived. On a 401, trade the refresh token for a new
+   pair and retry the request once. The server rotates refresh tokens and
+   rejects a used one, so concurrent 401s share a single refresh. If the
+   refresh fails, the session is over: AuthContext hears 'auth:expired' and
+   shows the login page.                                                    */
+let refreshing = null;
+
+function refreshAccessToken() {
+  if (!refreshing) {
+    refreshing = (async () => {
+      const refresh = localStorage.getItem('admin_refresh');
+      if (!refresh) return null;
+      const res = await fetch(`${BASE}/token/refresh/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      localStorage.setItem('admin_token', data.access);
+      if (data.refresh) localStorage.setItem('admin_refresh', data.refresh);
+      return data.access;
+    })().catch(() => null).finally(() => { refreshing = null; });
+  }
+  return refreshing;
+}
+
+async function authorizedFetch(url, init) {
+  const send = () => {
+    const headers = { ...init.headers };
+    const token = getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return fetch(url, { ...init, headers });
+  };
+  let res = await send();
+  if (res.status === 401 && localStorage.getItem('admin_refresh')) {
+    if (await refreshAccessToken()) res = await send();
+    else window.dispatchEvent(new Event('auth:expired'));
+  }
+  return res;
+}
+
 /* ── GET cache ────────────────────────────────────────────────────────────
    Every page refetched on mount, so navigating away and back meant another
    full round trip to the API (and on to Supabase) before the skeleton
@@ -29,14 +72,10 @@ function cacheClear() {
 }
 
 function fire(method, path, body) {
-  const headers = { 'Content-Type': 'application/json' };
-  const token = getToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
   return (async () => {
-    const res = await fetch(`${BASE}/${path}`, {
+    const res = await authorizedFetch(`${BASE}/${path}`, {
       method,
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined,
     });
     const data = await handleResponse(res);
@@ -69,7 +108,9 @@ async function request(method, path, body = null, opts = {}) {
 
   const run = fire('GET', path, body);
   inflight.set(path, run);
-  run.finally(() => inflight.delete(path));
+  // The caller handles errors on `run`; the catch only stops this cleanup chain
+  // from reporting the same rejection again as unhandled
+  run.finally(() => inflight.delete(path)).catch(() => {});
   return run;
 }
 
@@ -81,11 +122,7 @@ async function uploadFile(method, path, file, fieldName = 'file') {
   const fd = new FormData();
   fd.append(fieldName, file);
 
-  const headers = {};
-  const token = getToken();
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  const res = await fetch(`${BASE}/${path}`, { method, headers, body: fd });
+  const res = await authorizedFetch(`${BASE}/${path}`, { method, headers: {}, body: fd });
   return handleResponse(res);
 }
 
@@ -132,6 +169,10 @@ export const api = {
   },
 
   login:        (email, password) => request('POST', 'auth/login/', { email, password }),
+  /* Revoke the refresh token on the server. Plain fetch: no auth header or 401 retry needed. */
+  logout:       (refresh)         => fetch(`${BASE}/auth/logout/`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh }),
+  }),
   stats:        ()                => request('GET',  'auth/admin-stats/'),
   systemHealth: ()                => request('GET',  'auth/system-health/'),
 
