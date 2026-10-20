@@ -76,7 +76,7 @@ function FitBounds({ farms }) {
 const FLOOD_WEIGHTS = { low: 0.18, moderate: 0.55, high: 1.0 };
 
 const HEATMAP_WEIGHTS = {
-  density: (_f) => 1,
+  density: () => 1,
   yield:   (f)  => Math.min(1, Math.max(0, (Number(f.yieldTHa) || 0) / 7)),
   flood:   (f)  => FLOOD_WEIGHTS[(f.floodRisk || '').toLowerCase()] ?? 0.18,
 };
