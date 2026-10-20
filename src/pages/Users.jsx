@@ -7,7 +7,7 @@ import {
   Search, UserCheck, UserX, Eye, Pencil, Trash2, Plus, Users as UsersIcon,
   UserCheck2, UserMinus, ChevronLeft, ChevronRight, X, Mail, Phone, MapPin,
   Shield, Calendar, Clock, Hash, AtSign, AlertCircle, AlertTriangle,
-  CheckCircle2, KeyRound, Eye as EyeIcon, EyeOff,
+  CheckCircle2, Eye as EyeIcon, EyeOff,
 } from 'lucide-react';
 
 const PAGE_SIZE = 10;
@@ -641,6 +641,35 @@ function UserDetailsModal({ user, resolvedAddress, onClose }) {
 /*  Main page                                                                 */
 /* -------------------------------------------------------------------------- */
 
+// Map an API user to the shape the table and modals use
+const normalizeFromServer = (u) => ({
+  id:           u.id,
+  name:         dedupeName(u.name),
+  firstName:    u.first_name || '',
+  lastName:     u.last_name  || '',
+  email:        u.email || '',
+  username:     u.username || '',
+  phone:        u.phone || '',
+  barangay:     u.barangay || '',
+  municipality: u.municipality || '',
+  province:     u.province || '',
+  role:         u.is_superuser ? 'Superadmin' : (u.is_staff ? 'Admin' : 'Farmer'),
+  isStaff:      u.is_staff,
+  isSuperuser:  u.is_superuser,
+  farmCount:    u.farm_count ?? 0,
+  dateJoined:   u.date_joined,
+  lastLogin:    u.last_login,
+  status:       u.is_active ? 'Active' : 'Inactive',
+
+  // GPS — from the user's active farm pin (real coords from the
+  // capture API). Empty when the user has not pinned a farm yet.
+  hasGps:        !!u.has_gps,
+  gpsLatitude:   u.gps_latitude,
+  gpsLongitude:  u.gps_longitude,
+  gpsBarangay:   u.gps_barangay || '',
+  gpsFarmName:   u.gps_farm_name || '',
+});
+
 export default function Users() {
   const [search, setSearch]   = useState('');
   const [statusFilter, setStatus] = useState('');
@@ -714,33 +743,6 @@ export default function Users() {
   const active     = users.filter(u => u.status === 'Active').length;
   const inactive   = users.filter(u => u.status === 'Inactive').length;
 
-  const normalizeFromServer = (u) => ({
-    id:           u.id,
-    name:         dedupeName(u.name),
-    firstName:    u.first_name || '',
-    lastName:     u.last_name  || '',
-    email:        u.email || '',
-    username:     u.username || '',
-    phone:        u.phone || '',
-    barangay:     u.barangay || '',
-    municipality: u.municipality || '',
-    province:     u.province || '',
-    role:         u.is_superuser ? 'Superadmin' : (u.is_staff ? 'Admin' : 'Farmer'),
-    isStaff:      u.is_staff,
-    isSuperuser:  u.is_superuser,
-    farmCount:    u.farm_count ?? 0,
-    dateJoined:   u.date_joined,
-    lastLogin:    u.last_login,
-    status:       u.is_active ? 'Active' : 'Inactive',
-
-    // GPS — from the user's active farm pin (real coords from the
-    // capture API). Empty when the user has not pinned a farm yet.
-    hasGps:        !!u.has_gps,
-    gpsLatitude:   u.gps_latitude,
-    gpsLongitude:  u.gps_longitude,
-    gpsBarangay:   u.gps_barangay || '',
-    gpsFarmName:   u.gps_farm_name || '',
-  });
 
   const handleSaved = (saved, wasEditing) => {
     const norm = normalizeFromServer(saved);

@@ -1,5 +1,8 @@
 # RiceFlow Admin
 
+[![CI](https://github.com/microxxd300/rice_flow_admin/actions/workflows/ci.yml/badge.svg)](https://github.com/microxxd300/rice_flow_admin/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/microxxd300/rice_flow_admin/actions/workflows/codeql.yml/badge.svg)](https://github.com/microxxd300/rice_flow_admin/actions/workflows/codeql.yml)
+
 React (Vite + React Router) admin dashboard for RiceFlow: farms map, farm cycles, users, datasets, suitability rules, and data import. It talks to the [RiceFlow backend](https://github.com/microxxd300/rice_flow_backend) API.
 
 ## Local development
@@ -10,6 +13,12 @@ npm run dev        # http://localhost:5173, calls the Django dev server at http:
 ```
 
 Set `VITE_API_URL` (see `.env.example`) to point at a different backend.
+
+## Checks
+
+CI runs on every push and pull request: lint, tests (Vitest), build, Docker image build, `npm audit`, gitleaks, and CodeQL. Run the same checks locally with `npm run lint && npm test && npm run build`.
+
+Branching, commit messages, and releases follow the [backend strategy](https://github.com/microxxd300/rice_flow_backend#branching-strategy): `main` (production), `develop` (integration), and `feature/`, `fix/`, `hotfix/` branches merged by pull request.
 
 ## Docker
 
