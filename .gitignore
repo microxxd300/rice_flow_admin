@@ -25,3 +25,8 @@ dist-ssr
 
 # Local asset backups
 *.bak
+
+# Environment files
+.env
+.env.*
+!.env.example

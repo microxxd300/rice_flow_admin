@@ -1,4 +1,6 @@
-const BASE = 'http://localhost:8000/api';
+// Docker/production builds use the same-origin /api path that nginx proxies to Django.
+// Local `npm run dev` keeps calling the Django dev server directly.
+const BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000/api' : '/api');
 
 function getToken() {
   return localStorage.getItem('admin_token');
