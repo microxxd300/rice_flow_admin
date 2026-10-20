@@ -57,3 +57,53 @@ describe('api client', () => {
     );
   });
 });
+
+describe('token refresh', () => {
+  let store;
+  let dispatchEvent;
+
+  beforeEach(() => {
+    store = { admin_token: 'old-access', admin_refresh: 'refresh-1' };
+    vi.stubGlobal('localStorage', {
+      getItem: (k) => store[k] ?? null,
+      setItem: (k, v) => { store[k] = v; },
+      removeItem: (k) => { delete store[k]; },
+    });
+    dispatchEvent = vi.fn();
+    vi.stubGlobal('window', { dispatchEvent });
+  });
+
+  it('refreshes on 401, keeps the rotated refresh token, and retries', async () => {
+    const fetchMock = vi.fn(async (url, init) => {
+      if (url.endsWith('/token/refresh/')) return jsonResponse({ access: 'new-access', refresh: 'refresh-2' });
+      return init.headers.Authorization === 'Bearer new-access'
+        ? jsonResponse({ users: 3 })
+        : jsonResponse({ detail: 'expired' }, 401);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(api.stats()).resolves.toEqual({ users: 3 });
+    expect(store).toMatchObject({ admin_token: 'new-access', admin_refresh: 'refresh-2' });
+  });
+
+  it('shares one refresh between parallel 401s', async () => {
+    const fetchMock = vi.fn(async (url, init) => {
+      if (url.endsWith('/token/refresh/')) return jsonResponse({ access: 'new-access', refresh: 'refresh-2' });
+      return init.headers.Authorization === 'Bearer new-access'
+        ? jsonResponse({ ok: true })
+        : jsonResponse({ detail: 'expired' }, 401);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await Promise.all([api.stats(), api.users(), api.systemHealth()]);
+    const refreshCalls = fetchMock.mock.calls.filter(([url]) => url.endsWith('/token/refresh/'));
+    expect(refreshCalls).toHaveLength(1);
+  });
+
+  it('ends the session when the refresh token is rejected', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ detail: 'invalid' }, 401)));
+
+    await expect(api.stats()).rejects.toThrow('invalid');
+    expect(dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({ type: 'auth:expired' }));
+  });
+});
