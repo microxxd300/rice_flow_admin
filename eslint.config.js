@@ -17,5 +17,10 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // Performance advice from the React Compiler rules, not a correctness bug.
+      // Kept visible as warnings while the effects are refactored over time.
+      'react-hooks/set-state-in-effect': 'warn',
+    },
   },
 ])
