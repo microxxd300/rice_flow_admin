@@ -16,6 +16,8 @@ export function AuthProvider({ children }) {
   const [user,  setUser]  = useState(() => {
     try { return JSON.parse(localStorage.getItem('admin_user') || 'null'); } catch { return null; }
   });
+  // A saved session is only trusted after the server confirms it (see the effect below)
+  const [checking, setChecking] = useState(() => !!localStorage.getItem('admin_token'));
 
   const login = async (email, password) => {
     const data = await api.login(email, password);
@@ -47,9 +49,34 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('auth:expired', onExpired);
   }, []);
 
+  // On startup, confirm the saved session with the server. The API client renews an
+  // expired access token on its own; if the session can't be renewed it fires
+  // 'auth:expired' and the login page shows. A network error keeps the session, so a
+  // backend that is still starting doesn't log anyone out.
+  useEffect(() => {
+    if (!localStorage.getItem('admin_token')) return;
+    let cancelled = false;
+    api.profile()
+      .then(profile => {
+        if (cancelled) return;
+        if (!profile?.is_staff) {
+          clearStoredSession();
+          setToken(null);
+          setUser(null);
+          return;
+        }
+        localStorage.setItem('admin_user', JSON.stringify(profile));
+        setToken(localStorage.getItem('admin_token'));
+        setUser(profile);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setChecking(false); });
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <AuthContext.Provider value={{
-      token, user, login, logout,
+      token, user, login, logout, checking,
       isAuthenticated: !!token,
       role: roleOf(user),
     }}>

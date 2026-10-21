@@ -107,3 +107,23 @@ describe('token refresh', () => {
     expect(dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({ type: 'auth:expired' }));
   });
 });
+
+describe('session without a refresh token', () => {
+  it('ends the session on a 401 instead of leaving an empty dashboard', async () => {
+    // Sessions saved before refresh support have only the access token
+    const store = { admin_token: 'expired-access' };
+    vi.stubGlobal('localStorage', {
+      getItem: (k) => store[k] ?? null,
+      setItem: (k, v) => { store[k] = v; },
+      removeItem: (k) => { delete store[k]; },
+    });
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal('window', { dispatchEvent });
+    const fetchMock = vi.fn(async () => jsonResponse({ detail: 'expired' }, 401));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(api.stats()).rejects.toThrow('expired');
+    expect(dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({ type: 'auth:expired' }));
+    expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/token/refresh/'))).toBe(false);
+  });
+});

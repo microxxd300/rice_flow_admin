@@ -9,9 +9,10 @@ function getToken() {
 /* ── Token refresh ────────────────────────────────────────────────────────
    Access tokens are short-lived. On a 401, trade the refresh token for a new
    pair and retry the request once. The server rotates refresh tokens and
-   rejects a used one, so concurrent 401s share a single refresh. If the
-   refresh fails, the session is over: AuthContext hears 'auth:expired' and
-   shows the login page.                                                    */
+   rejects a used one, so concurrent 401s share a single refresh. If there is
+   no refresh token (sessions saved before refresh support) or the refresh
+   fails, the session is over: AuthContext hears 'auth:expired' and shows the
+   login page.                                                              */
 let refreshing = null;
 
 function refreshAccessToken() {
@@ -42,7 +43,7 @@ async function authorizedFetch(url, init) {
     return fetch(url, { ...init, headers });
   };
   let res = await send();
-  if (res.status === 401 && localStorage.getItem('admin_refresh')) {
+  if (res.status === 401 && getToken()) {
     if (await refreshAccessToken()) res = await send();
     else window.dispatchEvent(new Event('auth:expired'));
   }
@@ -169,6 +170,8 @@ export const api = {
   },
 
   login:        (email, password) => request('POST', 'auth/login/', { email, password }),
+  /* The signed-in user, straight from the server; used to check a saved session on startup. */
+  profile:      ()                => request('GET', 'auth/profile/', null, { fresh: true }),
   /* Revoke the refresh token on the server. Plain fetch: no auth header or 401 retry needed. */
   logout:       (refresh)         => fetch(`${BASE}/auth/logout/`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh }),
