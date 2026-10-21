@@ -60,9 +60,11 @@ function Guarded({ path, children }) {
 }
 
 function AppRoutes() {
-  const { isAuthenticated } = useAuth();
-  usePrefetch(isAuthenticated);
+  const { isAuthenticated, checking } = useAuth();
+  usePrefetch(isAuthenticated && !checking);
 
+  // Don't show the dashboard until a saved session has been confirmed
+  if (checking) return <RouteFallback />;
   if (!isAuthenticated) return <Login />;
 
   return (
