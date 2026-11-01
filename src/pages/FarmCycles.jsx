@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import Skeleton, { SkeletonStyles, SkelStatCard } from '../components/Skeleton';
 import { normalizeStage } from '../stageGroups';
+import { useAuth } from '../context/AuthContext';
+import { isAdmin } from '../permissions';
 
 const PAGE_SIZE = 10;
 const shadow = '0 1px 6px rgba(26,26,46,0.06), 0 0 1px rgba(26,26,46,0.04)';
@@ -147,6 +149,9 @@ const fmtDate = (iso) => iso
 /* -------------------------------------------------------------------------- */
 
 export default function FarmCycles() {
+  // Deleting a cycle is admin only; the validator views (the backend enforces both)
+  const { role } = useAuth();
+  const canDelete = isAdmin(role);
   const [search, setSearch]       = useState('');
   const [stageFilter, setStage]   = useState('');
   const [statusFilter, setStatusF]= useState('');
@@ -207,8 +212,8 @@ export default function FarmCycles() {
     }
   };
 
-  const uniqueUsers = [...new Map(cycles.map(c => [c.email, c.owner])).entries()]
-    .map(([email, name]) => ({ value: email, label: `${name} (${email})` }));
+  const uniqueUsers = [...new Map(cycles.map(c => [String(c.ownerId), c])).entries()]
+    .map(([id, c]) => ({ value: id, label: c.email ? `${c.owner} (${c.email})` : c.owner }));
 
   const filtered = cycles.filter(c => {
     const q = search.toLowerCase();
@@ -218,7 +223,7 @@ export default function FarmCycles() {
        (c.variety || '').toLowerCase().includes(q)) &&
       (!stageFilter  || c.stage  === stageFilter)  &&
       (!statusFilter || c.status === statusFilter) &&
-      (!userFilter   || c.email  === userFilter)
+      (!userFilter   || String(c.ownerId) === userFilter)
     );
   });
 
@@ -390,11 +395,13 @@ export default function FarmCycles() {
                   <StatusBadge status={c.status} />
                 </div>
               </div>
-              <button onClick={() => handleDelete(c.id)} disabled={deleting === c.id}
-                style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.errorLight}`, backgroundColor: C.errorLight, cursor: deleting === c.id ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: deleting === c.id ? 0.5 : 1 }}
-                title="Delete cycle">
-                <Trash2 size={14} color={C.error} />
-              </button>
+              {canDelete && (
+                <button onClick={() => handleDelete(c.id)} disabled={deleting === c.id}
+                  style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.errorLight}`, backgroundColor: C.errorLight, cursor: deleting === c.id ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: deleting === c.id ? 0.5 : 1 }}
+                  title="Delete cycle">
+                  <Trash2 size={14} color={C.error} />
+                </button>
+              )}
             </div>
           ))}
 
@@ -449,11 +456,13 @@ export default function FarmCycles() {
                     <p style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 4 }}>Status</p>
                     <StatusBadge status={c.status} />
                   </div>
-                  <button onClick={() => handleDelete(c.id)} disabled={deleting === c.id}
-                    style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${C.errorLight}`, backgroundColor: C.errorLight, cursor: deleting === c.id ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: deleting === c.id ? 0.5 : 1 }}
-                    title="Delete cycle">
-                    <Trash2 size={13} color={C.error} />
-                  </button>
+                  {canDelete && (
+                    <button onClick={() => handleDelete(c.id)} disabled={deleting === c.id}
+                      style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${C.errorLight}`, backgroundColor: C.errorLight, cursor: deleting === c.id ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: deleting === c.id ? 0.5 : 1 }}
+                      title="Delete cycle">
+                      <Trash2 size={13} color={C.error} />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

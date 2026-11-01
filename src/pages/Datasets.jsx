@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { C } from '../theme';
 import { api } from '../services/api';
 import { SkeletonStyles, SkelTableRow } from '../components/Skeleton';
+import { useAuth } from '../context/AuthContext';
+import { isAdmin } from '../permissions';
 import {
   Search, Pencil, Trash2, Plus, Database, Sprout, CheckCircle2,
   ChevronLeft, ChevronRight, X, AlertTriangle, Leaf, Download,
@@ -253,7 +255,7 @@ function Toggle({ value, onChange, labelOn = 'Active', labelOff = 'Inactive' }) 
 /*  Modal: Create / Edit variety                                              */
 /* -------------------------------------------------------------------------- */
 
-function VarietyModal({ open, initial, onClose, onSaved }) {
+function VarietyModal({ open, initial, onClose, onSaved, canManage }) {
   const [form, setForm]     = useState(initial || BLANK_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
@@ -420,9 +422,11 @@ function VarietyModal({ open, initial, onClose, onSaved }) {
             <Field label="Notes" full>
               <TextArea value={form.notes} onChange={v => set('notes', v)} placeholder="Additional notes" rows={3} />
             </Field>
-            <Field label="Status" full>
-              <Toggle value={form.is_active} onChange={v => set('is_active', v)} />
-            </Field>
+            {canManage && (
+              <Field label="Status" full>
+                <Toggle value={form.is_active} onChange={v => set('is_active', v)} />
+              </Field>
+            )}
           </Section>
         </div>
 
@@ -515,6 +519,9 @@ function DeleteConfirm({ variety, onCancel, onConfirm }) {
 /* -------------------------------------------------------------------------- */
 
 export default function Datasets() {
+  // The validator corrects variety values; adding and deactivating are admin only
+  const { role } = useAuth();
+  const canManage = isAdmin(role);
   const [list,    setList]      = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error,   setError]     = useState('');
@@ -646,17 +653,19 @@ export default function Datasets() {
             <Download size={14} />
             Export CSV
           </button>
-          <button
-            onClick={() => { setEditing(null); setModalOpen(true); }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              backgroundColor: C.primary, color: '#fff',
-              border: 'none', borderRadius: 10, padding: '9px 16px',
-              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-            }}>
-            <Plus size={14} />
-            Add Variety
-          </button>
+          {canManage && (
+            <button
+              onClick={() => { setEditing(null); setModalOpen(true); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                backgroundColor: C.primary, color: '#fff',
+                border: 'none', borderRadius: 10, padding: '9px 16px',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+              <Plus size={14} />
+              Add Variety
+            </button>
+          )}
         </div>
       </div>
 
@@ -784,9 +793,11 @@ export default function Datasets() {
                       <button title="Edit" onClick={() => { setEditing(v); setModalOpen(true); }} style={{ width: 28, height: 28, borderRadius: 7, border: 'none', cursor: 'pointer', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Pencil size={13} color="#6B7280" />
                       </button>
-                      <button title="Deactivate" onClick={() => setToDelete(v)} disabled={!v.is_active} style={{ width: 28, height: 28, borderRadius: 7, border: 'none', cursor: v.is_active ? 'pointer' : 'not-allowed', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: v.is_active ? 1 : 0.35 }}>
-                        <Trash2 size={13} color={C.error} />
-                      </button>
+                      {canManage && (
+                        <button title="Deactivate" onClick={() => setToDelete(v)} disabled={!v.is_active} style={{ width: 28, height: 28, borderRadius: 7, border: 'none', cursor: v.is_active ? 'pointer' : 'not-allowed', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: v.is_active ? 1 : 0.35 }}>
+                          <Trash2 size={13} color={C.error} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -826,6 +837,7 @@ export default function Datasets() {
         initial={editing}
         onClose={() => setModalOpen(false)}
         onSaved={handleSaved}
+        canManage={canManage}
       />
       <DeleteConfirm
         variety={toDelete}

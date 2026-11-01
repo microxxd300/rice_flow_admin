@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, createContext, useContext } from 'react';
 import { C } from '../theme';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { isAdmin } from '../permissions';
 import Skeleton, { SkeletonStyles } from '../components/Skeleton';
 import {
   Search, SlidersHorizontal, Save, RotateCcw,
@@ -134,13 +136,19 @@ const CLASS_META = {
 /*  Atoms                                                                     */
 /* -------------------------------------------------------------------------- */
 
+/* True for the validator: the rules are shown for checking, but only the admin
+   may change the validated RSI model (the backend refuses the save too). */
+const ReadOnly = createContext(false);
+
 function NumberInput({ value, onChange, step = 0.1, width = 76 }) {
   const [focus, setFocus] = useState(false);
+  const readOnly = useContext(ReadOnly);
   return (
     <input
       type="number"
       value={value}
       step={step}
+      readOnly={readOnly}
       onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
       onFocus={() => setFocus(true)}
       onBlur={() => setFocus(false)}
@@ -476,6 +484,8 @@ function Dropdown({ value, onChange, options, placeholder }) {
 /* -------------------------------------------------------------------------- */
 
 export default function Rules() {
+  const { role } = useAuth();
+  const readOnly = !isAdmin(role);
   const [rules, setRules]         = useState(DEFAULT_RULES);
   const [search, setSearch]       = useState('');
   const [groupFilter, setGroup]   = useState('');
@@ -612,6 +622,16 @@ export default function Rules() {
             <Zap size={12} color={C.primary} />
             <span>Effective immediately for new scans</span>
           </div>
+          {readOnly ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              backgroundColor: C.surfaceAlt, color: C.textSecondary,
+              borderRadius: 10, padding: '9px 14px', fontSize: 13, fontWeight: 600,
+            }}>
+              <Lock size={14} />
+              View only · changes are made by the admin
+            </div>
+          ) : (<>
           <button onClick={handleReset}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
@@ -635,6 +655,7 @@ export default function Rules() {
             <Save size={14} />
             {saving ? 'Saving…' : 'Save Changes'}
           </button>
+          </>)}
         </div>
       </div>
 
@@ -734,12 +755,14 @@ export default function Rules() {
             </div>
 
             {/* Cards grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16 }}>
-              {inGroup.map(rule => (
-                <RuleCard key={rule.key} rule={rule}
-                  onChange={(updated) => handleChange(rule.key, updated)} />
-              ))}
-            </div>
+            <ReadOnly.Provider value={readOnly}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16 }}>
+                {inGroup.map(rule => (
+                  <RuleCard key={rule.key} rule={rule}
+                    onChange={(updated) => handleChange(rule.key, updated)} />
+                ))}
+              </div>
+            </ReadOnly.Provider>
           </section>
         );
       })}
