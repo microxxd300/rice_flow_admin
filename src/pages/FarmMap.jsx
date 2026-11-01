@@ -246,7 +246,7 @@ export default function FarmMap() {
   const [loading, setLoading]   = useState(true);
   const [deleting, setDeleting] = useState(null);
   const [deleteError, setDeleteError] = useState('');
-  // Erasing a farm is permanent, so only admins get the button (agriculturists view)
+  // Erasing a farm is permanent, so only admins get the button (validators view)
   const { role } = useAuth();
   const canDelete = role === ROLE.ADMIN;
 

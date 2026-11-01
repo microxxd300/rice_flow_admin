@@ -174,8 +174,8 @@ function Section({ title, children }) {
 function RoleSelector({ value, onChange }) {
   const options = [
     { value: 'farmer',     label: 'Farmer',     desc: 'Mobile app access',         color: C.primary },
-    { value: 'admin',      label: 'Admin',      desc: 'Admin dashboard access',    color: C.accent  },
-    { value: 'superadmin', label: 'Superadmin', desc: 'Full system permissions',   color: C.error   },
+    { value: 'admin',      label: 'Validator',  desc: 'Views data, edits varieties', color: C.accent  },
+    { value: 'superadmin', label: 'Admin',      desc: 'Full system permissions',     color: C.error   },
   ];
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -501,7 +501,7 @@ function DetailRow({ Icon, label, value, mono }) {
 function UserDetailsModal({ user, resolvedAddress, onClose }) {
   if (!user) return null;
 
-  const roleLabel = user.isSuperuser ? 'Superadmin' : (user.isStaff ? 'Admin' : 'Farmer');
+  const roleLabel = user.isSuperuser ? 'Admin' : (user.isStaff ? 'Validator' : 'Farmer');
   const roleStyle = user.isSuperuser
     ? { bg: '#FEE4E2', color: '#B42318' }
     : (user.isStaff ? { bg: C.accentLight, color: C.accent } : { bg: C.primaryLighter, color: C.primary });
@@ -653,7 +653,7 @@ const normalizeFromServer = (u) => ({
   barangay:     u.barangay || '',
   municipality: u.municipality || '',
   province:     u.province || '',
-  role:         u.is_superuser ? 'Superadmin' : (u.is_staff ? 'Admin' : 'Farmer'),
+  role:         u.is_superuser ? 'Admin' : (u.is_staff ? 'Validator' : 'Farmer'),
   isStaff:      u.is_staff,
   isSuperuser:  u.is_superuser,
   farmCount:    u.farm_count ?? 0,
@@ -826,8 +826,8 @@ export default function Users() {
           placeholder="All Roles"
           options={[
             { value: 'Farmer',     label: 'Farmer'     },
+            { value: 'Validator',  label: 'Validator'  },
             { value: 'Admin',      label: 'Admin'      },
-            { value: 'Superadmin', label: 'Superadmin' },
           ]}
         />
         <Dropdown

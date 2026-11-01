@@ -21,7 +21,6 @@ const load = {
   datasets:   () => import('./pages/Datasets'),
   imports:    () => import('./pages/Import'),
   rules:      () => import('./pages/Rules'),
-  knowledge:  () => import('./pages/Knowledge'),
 };
 
 const Dashboard  = lazy(load.dashboard);
@@ -31,7 +30,6 @@ const Users      = lazy(load.users);
 const Datasets   = lazy(load.datasets);
 const Import     = lazy(load.imports);
 const Rules      = lazy(load.rules);
-const Knowledge  = lazy(load.knowledge);
 
 /* Once the shell is up and idle, pull every remaining route chunk and the data
    each page needs. By the time a nav item is clicked, both are already in
@@ -91,7 +89,6 @@ function AppRoutes() {
               <Route path="/datasets" element={<Guarded path="/datasets"><Datasets /></Guarded>} />
               <Route path="/rules"    element={<Guarded path="/rules"><Rules /></Guarded>} />
               <Route path="/import"   element={<Guarded path="/import"><Import /></Guarded>} />
-              <Route path="/knowledge" element={<Guarded path="/knowledge"><Knowledge /></Guarded>} />
               <Route path="*"         element={<Navigate to="/" />} />
             </Routes>
           </Suspense>

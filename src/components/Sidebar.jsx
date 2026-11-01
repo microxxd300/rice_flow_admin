@@ -2,15 +2,14 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Map, Tractor, Users, Database, Upload,
-  SlidersHorizontal, Leaf, LogOut, Settings, HelpCircle, BookOpen,
+  SlidersHorizontal, Leaf, LogOut, Settings, HelpCircle,
 } from 'lucide-react';
 import { C, radius } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { canAccess, ROLE, ROLE_LABEL } from '../permissions';
 
 /* Grouped nav, matching the MENU / GENERAL split in the design reference.
-   Items are filtered by role, so an agriculturist never sees Users, Import
-   or Suitability Rules. */
+   Items are filtered by role, so a validator never sees Users or Import. */
 const MENU = [
   { to: '/',         label: 'Dashboard',         Icon: LayoutDashboard   },
   { to: '/map',      label: 'Farm Map',          Icon: Map               },
@@ -19,7 +18,6 @@ const MENU = [
   { to: '/datasets', label: 'Rice Varieties',    Icon: Database          },
   { to: '/rules',    label: 'Suitability Rules', Icon: SlidersHorizontal },
   { to: '/import',   label: 'Import Varieties',  Icon: Upload            },
-  { to: '/knowledge', label: 'AI Knowledge',     Icon: BookOpen          },
 ];
 
 function SectionLabel({ children }) {
@@ -109,6 +107,9 @@ function ActionItem({ label, Icon, onClick, danger }) {
 
 export default function Sidebar() {
   const { user, logout, role } = useAuth();
+  // The profile has first/last name, not a single name field
+  const displayName = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim()
+    || user?.username || ROLE_LABEL[role] || 'Admin';
   const visible = MENU.filter(item => canAccess(role, item.to));
 
   return (
@@ -164,7 +165,7 @@ export default function Sidebar() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>
-              {(user.name || 'A').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+              {displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
             </span>
           </div>
           <div style={{ minWidth: 0 }}>
@@ -172,7 +173,7 @@ export default function Sidebar() {
               fontSize: 12, fontWeight: 700, color: C.text,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
-              {user.name || 'Admin'}
+              {displayName}
             </p>
             <p style={{
               fontSize: 10, fontWeight: 700, marginTop: 1,
