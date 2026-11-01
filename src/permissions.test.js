@@ -25,6 +25,11 @@ describe('canAccess', () => {
     expect(canAccess(ROLE.AGRICULTURIST, '/farms')).toBe(true);
   });
 
+  it('lets both roles edit the AI knowledge sheet', () => {
+    expect(canAccess(ROLE.ADMIN, '/knowledge')).toBe(true);
+    expect(canAccess(ROLE.AGRICULTURIST, '/knowledge')).toBe(true);
+  });
+
   it('denies unknown roles everything', () => {
     expect(canAccess('guest', '/')).toBe(false);
     expect(allowedRoutes(undefined)).toEqual([]);

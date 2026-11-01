@@ -34,14 +34,15 @@ export function roleOf(user) {
   Routes each role may open. The agriculturist gets everything agronomic —
   the farms, the crop cycles, the varieties and the dashboard that summarises
   them — but not account management, bulk data import, or the suitability
-  rules that define the validated RSI model.
+  rules that define the validated RSI model. Both write the AI chat's knowledge
+  sheet: it is agronomy, and the backend lets every staff account edit it.
 */
 const ROUTES = {
   [ROLE.ADMIN]: [
-    '/', '/map', '/farms', '/users', '/datasets', '/rules', '/import',
+    '/', '/map', '/farms', '/users', '/datasets', '/rules', '/import', '/knowledge',
   ],
   [ROLE.AGRICULTURIST]: [
-    '/', '/map', '/farms', '/datasets',
+    '/', '/map', '/farms', '/datasets', '/knowledge',
   ],
 };
 

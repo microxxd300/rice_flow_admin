@@ -205,4 +205,8 @@ export const api = {
 
   rules:       ()                => request('GET',  'recommendations/rules/'),
   saveRules:   (payload)         => request('PUT',  'recommendations/rules/', { payload }),
+
+  // AI chat knowledge sheet (admins and agriculturists)
+  knowledge:     ()        => request('GET', 'ai/knowledge/'),
+  saveKnowledge: (content) => request('PUT', 'ai/knowledge/', { content }),
 };
