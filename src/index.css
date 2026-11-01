@@ -1,5 +1,7 @@
-@import "tailwindcss";
+/* A url() import must come first: "tailwindcss" expands into rules, and an @import
+   after rules is dropped, so the Inter font never loaded */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 

@@ -6,6 +6,7 @@ import {
   Tractor, List, LayoutGrid, Trash2,
 } from 'lucide-react';
 import Skeleton, { SkeletonStyles, SkelStatCard } from '../components/Skeleton';
+import { normalizeStage } from '../stageGroups';
 
 const PAGE_SIZE = 10;
 const shadow = '0 1px 6px rgba(26,26,46,0.06), 0 0 1px rgba(26,26,46,0.04)';
@@ -41,17 +42,6 @@ const STATUS_COLOR = {
 };
 
 // Map any backend stage name to one of our 5 buckets.
-function normalizeStage(rawName) {
-  const s = (rawName || '').toLowerCase();
-  if (!s)                       return 'Land Prep';
-  if (s.includes('land') || s.includes('prep') || s.includes('seedling')) return 'Land Prep';
-  if (s.includes('transplant') || s.includes('plant'))                    return 'Planting';
-  if (s.includes('vegetative') || s.includes('tiller'))                   return 'Vegetative';
-  if (s.includes('reproductive') || s.includes('panicle') || s.includes('flower')) return 'Reproductive';
-  if (s.includes('harvest') || s.includes('ripening') || s.includes('mature'))     return 'Harvesting';
-  return 'Land Prep';
-}
-
 function FarmAvatar({ stage }) {
   const sc   = STAGE_COLOR[stage] || STAGE_COLOR['Land Prep'];
   const Icon = STAGE_ICON[stage] || Tractor;
@@ -190,7 +180,7 @@ export default function FarmCycles() {
           planting:  c.planting_date,
           expected:  c.expected_harvest_date,
           actual:    c.actual_harvest_date,
-          stage:     normalizeStage(c.current_stage),
+          stage:     normalizeStage(c.current_stage, c.stage_no),
           rawStage:  c.current_stage,
           stageNo:   c.stage_no,
           status:    c.status,
