@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Map, Tractor, Users, Database, Upload,
-  SlidersHorizontal, Leaf, LogOut, Settings, HelpCircle,
+  SlidersHorizontal, Leaf, LogOut, Settings, HelpCircle, BookOpen,
 } from 'lucide-react';
 import { C, radius } from '../theme';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +19,7 @@ const MENU = [
   { to: '/datasets', label: 'Rice Varieties',    Icon: Database          },
   { to: '/rules',    label: 'Suitability Rules', Icon: SlidersHorizontal },
   { to: '/import',   label: 'Import Varieties',  Icon: Upload            },
+  { to: '/knowledge', label: 'AI Knowledge',     Icon: BookOpen          },
 ];
 
 function SectionLabel({ children }) {
