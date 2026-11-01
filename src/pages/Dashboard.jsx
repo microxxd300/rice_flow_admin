@@ -417,6 +417,7 @@ export default function Dashboard() {
   const { role } = useAuth();
   const [stats, setStats]         = useState(null);
   const [health, setHealth]       = useState(null);
+  const [yieldModel, setYieldModel] = useState(undefined);  // undefined = loading, null = none trained
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefresh]  = useState(false);
   const [lastUpdated, setUpdated] = useState(null);
@@ -430,9 +431,13 @@ export default function Dashboard() {
       api.invalidate();
     }
     try {
-      const [s, h] = await Promise.allSettled([api.stats(), api.systemHealth()]);
+      const [s, h, m] = await Promise.allSettled([api.stats(), api.systemHealth(), api.models()]);
       if (s.status === 'fulfilled') setStats(s.value);
       if (h.status === 'fulfilled') setHealth(h.value);
+      if (m.status === 'fulfilled') {
+        const list = Array.isArray(m.value) ? m.value : [];
+        setYieldModel(list.find(x => x.is_active) ?? null);
+      }
       setUpdated(new Date());
     } finally {
       setRefresh(false);
@@ -968,6 +973,47 @@ export default function Dashboard() {
                     : 'Status pending…'}
                 </span>
               </div>
+            </div>
+          </div>
+
+          {/* Yield Model — read-only. Retraining needs the DA harvest file on the server,
+              so it stays a command (python manage.py train_yield_models), not a button. */}
+          <div style={card}>
+            <SectionHeader title="Yield Model" sub="Predicts each farm's harvest (t/ha)" />
+            <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {yieldModel === undefined && (
+                <p style={{ fontSize: 12, color: '#9CA3AF', textAlign: 'center', padding: '8px 0' }}>Loading…</p>
+              )}
+              {yieldModel === null && (
+                <p style={{ fontSize: 12, color: '#9CA3AF', textAlign: 'center', padding: '8px 0' }}>
+                  No trained model yet.
+                </p>
+              )}
+              {yieldModel && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{yieldModel.model_type_display}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, backgroundColor: C.successLight, color: C.success }}>
+                      active
+                    </span>
+                  </div>
+                  {[
+                    ['Accuracy (R²)', yieldModel.r2_score.toFixed(2),
+                      `explains ${Math.round(yieldModel.r2_score * 100)}% of yield differences`],
+                    ['Typical error', `±${yieldModel.mae.toFixed(2)} t/ha`, 'mean absolute error'],
+                    ['Trained on', `${yieldModel.training_samples.toLocaleString()} harvests`,
+                      yieldModel.trained_at ? new Date(yieldModel.trained_at).toLocaleDateString() : ''],
+                  ].map(([label, value, hint]) => (
+                    <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      <span style={{ fontSize: 12, color: C.textSecondary, flex: 1 }}>{label}</span>
+                      <span style={{ textAlign: 'right' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{value}</span>
+                        <span style={{ display: 'block', fontSize: 10, color: '#9CA3AF' }}>{hint}</span>
+                      </span>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           </div>
 
