@@ -8,7 +8,9 @@ import 'leaflet/dist/leaflet.css';
 import { C } from '../theme';
 import { api } from '../services/api';
 import { reverseGeocode, getCachedGeocode } from '../services/geocode';
-import { MapPin, ChevronLeft, ChevronRight, Search, Flame, Layers } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { ROLE } from '../permissions';
+import { MapPin, ChevronLeft, ChevronRight, Search, Flame, Layers, Trash2 } from 'lucide-react';
 import { SkeletonStyles, SkelListRow } from '../components/Skeleton';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -242,6 +244,29 @@ export default function FarmMap() {
   const [heatMode, setHeatMode] = useState('density');
   const [heatPickerOpen, setHeatPickerOpen] = useState(false);
   const [loading, setLoading]   = useState(true);
+  const [deleting, setDeleting] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
+  // Erasing a farm is permanent, so only admins get the button (agriculturists view)
+  const { role } = useAuth();
+  const canDelete = role === ROLE.ADMIN;
+
+  const handleDelete = async (farm) => {
+    if (!window.confirm(
+      `Delete the farm "${farm.name}" by ${farm.owner}?\n\n` +
+      'Its scans, recommendations, planting guides, crop cycles, field logs and harvest records ' +
+      'are deleted with it. This cannot be undone.'
+    )) return;
+    setDeleting(farm.id);
+    setDeleteError('');
+    try {
+      await api.deleteFarm(farm.id);
+      setFarms(prev => prev.filter(f => f.id !== farm.id));
+    } catch (err) {
+      setDeleteError(err?.message || 'Failed to delete the farm.');
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   useEffect(() => {
     api.farms()
@@ -501,6 +526,7 @@ export default function FarmMap() {
           <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
             Showing {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} farms
           </p>
+          {deleteError && <p style={{ fontSize: 12, color: C.error, marginTop: 6 }}>{deleteError}</p>}
         </div>
 
         <div>
@@ -556,6 +582,13 @@ export default function FarmMap() {
                   <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: f.isActive ? C.success : '#D1D5DB' }} />
                   <span style={{ fontSize: 12, fontWeight: 600, color: f.isActive ? C.success : '#9CA3AF' }}>{f.isActive ? 'Active' : 'Inactive'}</span>
                 </div>
+                {canDelete && (
+                  <button onClick={() => handleDelete(f)} disabled={deleting === f.id}
+                    style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.errorLight}`, backgroundColor: C.errorLight, cursor: deleting === f.id ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: deleting === f.id ? 0.5 : 1 }}
+                    title="Delete farm" aria-label={`Delete farm ${f.name}`}>
+                    <Trash2 size={14} color={C.error} />
+                  </button>
+                )}
               </div>
             );
           })}
