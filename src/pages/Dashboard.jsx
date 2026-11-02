@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import { C, hatchCss, CHART_GREEN } from '../theme';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { canAccess } from '../permissions';
+import { canAccess, isAdmin } from '../permissions';
+import { timeAgo } from '../timeAgo';
+import ChangeList from '../components/ChangeList';
 import { reverseGeocode, getCachedGeocode } from '../services/geocode';
 import Skeleton, { SkeletonStyles, SkelStatCard, SkelListRow } from '../components/Skeleton';
 import {
@@ -393,20 +395,6 @@ function SectionHeader({ title, sub, right }) {
 /*  Helpers                                                                   */
 /* -------------------------------------------------------------------------- */
 
-function timeAgo(iso) {
-  if (!iso) return '';
-  const t = new Date(iso).getTime();
-  const diff = Math.max(0, Date.now() - t);
-  const s = Math.floor(diff / 1000);
-  if (s < 60)        return 'just now';
-  const m = Math.floor(s / 60);
-  if (m < 60)        return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24)        return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  if (d < 7)         return `${d}d ago`;
-  return new Date(iso).toLocaleDateString();
-}
 
 
 /* -------------------------------------------------------------------------- */
@@ -418,6 +406,8 @@ export default function Dashboard() {
   const [stats, setStats]         = useState(null);
   const [health, setHealth]       = useState(null);
   const [yieldModel, setYieldModel] = useState(undefined);  // undefined = loading, null = none trained
+  const [changes, setChanges]     = useState(null);        // latest change-log rows (admin only)
+  const admin = isAdmin(role);
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefresh]  = useState(false);
   const [lastUpdated, setUpdated] = useState(null);
@@ -431,8 +421,12 @@ export default function Dashboard() {
       api.invalidate();
     }
     try {
-      const [s, h, m] = await Promise.allSettled([api.stats(), api.systemHealth(), api.models()]);
+      const [s, h, m, c] = await Promise.allSettled([
+        api.stats(), api.systemHealth(), api.models(),
+        admin ? api.changesPreview() : Promise.resolve(null),
+      ]);
       if (s.status === 'fulfilled') setStats(s.value);
+      if (c.status === 'fulfilled' && Array.isArray(c.value)) setChanges(c.value);
       if (h.status === 'fulfilled') setHealth(h.value);
       if (m.status === 'fulfilled') {
         const list = Array.isArray(m.value) ? m.value : [];
@@ -445,6 +439,7 @@ export default function Dashboard() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on open; the role is fixed for the session
   useEffect(() => { loadAll({ silent: true }); }, []);
 
   // Reverse-geocode top_location coords whenever stats change. Reads
@@ -818,6 +813,26 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── Recent Changes (admin only): what was edited from this website ── */}
+      {admin && (
+        <div style={card}>
+          <SectionHeader
+            title="Recent Changes"
+            sub="Who changed what from the admin website"
+            right={
+              <Link to="/changes" style={{ fontSize: 12, fontWeight: 600, color: C.primary, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 2 }}>
+                View all <ChevronRight size={14} />
+              </Link>
+            }
+          />
+          {changes === null
+            ? <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} width="100%" height={16} radius={5} />)}
+              </div>
+            : <ChangeList rows={changes} expandable={false} />}
+        </div>
+      )}
 
       {/* ── Recent Activity + Quick Actions row ───────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>

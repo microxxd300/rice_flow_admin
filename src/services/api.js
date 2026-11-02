@@ -66,6 +66,14 @@ const cache = new Map();     // path -> { data, ts }
 const inflight = new Map();  // path -> Promise
 let warmed = false;
 
+const CHANGES_PREVIEW = 'activity/changes/?limit=5';   // the Dashboard card
+
+/* "?a=1&b=2" from the set values only ("" when none are set). */
+function query(params) {
+  const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null && v !== '')).toString();
+  return qs ? `?${qs}` : '';
+}
+
 function cacheClear() {
   cache.clear();
   inflight.clear();
@@ -160,12 +168,14 @@ export const api = {
 
   /* Pull the data every page needs into the cache once, shortly after login,
      so the first visit to each page is already warm. Errors are swallowed:
-     this is opportunistic, and each page still fetches for itself. */
-  warm() {
+     this is opportunistic, and each page still fetches for itself. Admin-only
+     lists are skipped for the validator: the server would refuse them. */
+  warm(admin) {
     if (warmed) return;
     warmed = true;
-    ['auth/admin-stats/', 'auth/users/', 'farms/all/', 'varieties/?all=1',
-     'progress/admin/cycles/', 'recommendations/rules/']
+    ['auth/admin-stats/', 'farms/all/', 'varieties/?all=1',
+     'progress/admin/cycles/', 'recommendations/rules/',
+     ...(admin ? ['auth/users/', CHANGES_PREVIEW] : [])]
       .forEach(p => { request('GET', p).catch(() => {}); });
   },
 
@@ -177,6 +187,9 @@ export const api = {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh }),
   }),
   stats:        ()                => request('GET',  'auth/admin-stats/'),
+  // Change log (admin only): who changed what from this website
+  changes:      ({ role, limit } = {}) => request('GET', `activity/changes/${query({ role, limit })}`),
+  changesPreview: ()              => request('GET', CHANGES_PREVIEW),
   systemHealth: ()                => request('GET',  'auth/system-health/'),
 
   users:        ()                => request('GET',    'auth/users/'),
