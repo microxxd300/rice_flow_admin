@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Map, Tractor, Users, Database, Upload,
-  SlidersHorizontal, Leaf, LogOut, Settings, HelpCircle,
+  SlidersHorizontal, Leaf, LogOut, Settings, HelpCircle, History,
 } from 'lucide-react';
 import { C, radius } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { canAccess, ROLE, ROLE_LABEL } from '../permissions';
 
 /* Grouped nav, matching the MENU / GENERAL split in the design reference.
-   Items are filtered by role, so a validator never sees Users or Import. */
+   Items are filtered by role, so a validator never sees Users, Import or
+   the Change Log. */
 const MENU = [
   { to: '/',         label: 'Dashboard',         Icon: LayoutDashboard   },
   { to: '/map',      label: 'Farm Map',          Icon: Map               },
@@ -18,6 +19,7 @@ const MENU = [
   { to: '/datasets', label: 'Rice Varieties',    Icon: Database          },
   { to: '/rules',    label: 'Suitability Rules', Icon: SlidersHorizontal },
   { to: '/import',   label: 'Import Varieties',  Icon: Upload            },
+  { to: '/changes',  label: 'Change Log',        Icon: History           },
 ];
 
 function SectionLabel({ children }) {

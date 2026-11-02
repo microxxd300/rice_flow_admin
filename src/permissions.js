@@ -41,11 +41,11 @@ export function isAdmin(role) {
   Routes each role may open. The validator sees everything agronomic — the
   dashboard, farms, crop cycles, varieties and the suitability rules (view only,
   so the validated RSI model is checked but not changed) — but not account
-  management or bulk data import.
+  management, bulk data import, or the change log of what was edited.
 */
 const ROUTES = {
   [ROLE.ADMIN]: [
-    '/', '/map', '/farms', '/users', '/datasets', '/rules', '/import',
+    '/', '/map', '/farms', '/users', '/datasets', '/rules', '/import', '/changes',
   ],
   [ROLE.VALIDATOR]: [
     '/', '/map', '/farms', '/datasets', '/rules',

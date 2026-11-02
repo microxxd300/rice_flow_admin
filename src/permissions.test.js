@@ -18,8 +18,9 @@ describe('canAccess', () => {
     expect(canAccess(ROLE.ADMIN, '/import')).toBe(true);
   });
 
-  it('keeps validators out of users and import', () => {
-    for (const path of ['/users', '/import']) {
+  it('keeps validators out of users, import and the change log', () => {
+    expect(canAccess(ROLE.ADMIN, '/changes')).toBe(true);
+    for (const path of ['/users', '/import', '/changes']) {
       expect(canAccess(ROLE.VALIDATOR, path)).toBe(false);
     }
   });
