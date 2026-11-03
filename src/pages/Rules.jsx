@@ -120,7 +120,7 @@ const DEFAULT_RULES = [
   {
     key: 'stress_tolerance', label: 'Stress Tolerance', group: 'Variety', unit: 'derived', weight: 0.10,
     type: 'derived',
-    description: 'Combines flood, drought, and salinity risk with the variety\'s tolerance profile. Cannot be edited directly — modify variety tolerances on the Datasets page instead.',
+    description: 'How well the variety fits this farm type and the season it is planted in. A variety for another farm type scores S3, one for the other season at most S2. Wet season (May–Oct) on lowland farms raises flood risk, so submergence-tolerant varieties rank first; dry season (Nov–Apr) on rainfed and upland farms raises drought risk, so drought-tolerant ones rank first. Cannot be edited directly — modify variety tolerances and seasons on the Datasets page instead.',
   },
 ];
 
