@@ -163,9 +163,12 @@ export default function FarmCycles() {
   const [deleting, setDeleting]   = useState(null);
   const [error, setError]         = useState('');
 
-  const load = () => {
-    setLoading(true);
-    setError('');
+  // quiet: a background refresh keeps the table on screen instead of showing the loader
+  const load = (quiet = false) => {
+    if (!quiet) {
+      setLoading(true);
+      setError('');
+    }
     api.farmCycles()
       .then(data => {
         const normalized = data.map(c => ({
@@ -193,11 +196,19 @@ export default function FarmCycles() {
         }));
         setCycles(normalized);
       })
-      .catch(err => setError(err?.message || 'Failed to load farm cycles.'))
+      .catch(err => { if (!quiet) setError(err?.message || 'Failed to load farm cycles.'); })
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  // Cycles follow the farmers' planting guides (a logged step moves the stage, a sowing
+  // answer moves the dates), so the table reloads every minute and when the tab is shown again
+  useEffect(() => {
+    load();
+    const timer = setInterval(() => load(true), 60_000);
+    const onShow = () => { if (document.visibilityState === 'visible') load(true); };
+    document.addEventListener('visibilitychange', onShow);
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', onShow); };
+  }, []);
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this farm cycle? This cannot be undone.')) return;
