@@ -6,6 +6,7 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from '../services/leafletSetup';
 import 'leaflet/dist/leaflet.css';
 import { C } from '../theme';
+import { HEADERS } from '../assets/pictures';
 import { api } from '../services/api';
 import { reverseGeocode, getCachedGeocode } from '../services/geocode';
 import { useAuth } from '../context/AuthContext';
@@ -346,6 +347,12 @@ export default function FarmMap() {
         <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
           Real GPS locations of all pinned farms — coordinates captured from the mobile app.
         </p>
+      </div>
+
+      {/* A slim photo strip: what this page is about, at a glance */}
+      <div style={{ position: 'relative', height: 112, borderRadius: 24, overflow: 'hidden', flexShrink: 0 }}>
+        <img src={HEADERS.map} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        <span style={{ position: 'absolute', left: 16, bottom: 14, padding: '6px 12px', borderRadius: 12, backgroundColor: 'rgba(17,24,39,0.72)', color: '#fff', fontSize: 12.5, fontWeight: 700 }}>Rice paddies around Panabo City, from above</span>
       </div>
 
       {/* Map */}

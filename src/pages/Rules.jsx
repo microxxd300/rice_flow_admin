@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, createContext, useContext } from 'react';
 import { C } from '../theme';
+import { factorPic, HEADERS } from '../assets/pictures';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin } from '../permissions';
@@ -211,6 +212,11 @@ function CardShell({ rule, weight, onWeight, locked, children }) {
     <div style={{ ...baseCard, padding: 22 }}>
       {/* Title row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, gap: 14 }}>
+        {factorPic(rule.key) && (
+          <div style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: C.background, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <img src={factorPic(rule.key)} alt="" style={{ width: 36, height: 36, objectFit: 'contain' }} />
+          </div>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{rule.label}</p>
           <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 3 }}>
@@ -707,6 +713,13 @@ export default function Rules() {
             {savedMsg}
           </span>
         )}
+      </div>
+
+
+      {/* A slim photo strip: what this page is about, at a glance */}
+      <div style={{ position: 'relative', height: 112, borderRadius: 24, overflow: 'hidden', flexShrink: 0 }}>
+        <img src={HEADERS.soil} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        <span style={{ position: 'absolute', left: 16, bottom: 14, padding: '6px 12px', borderRadius: 12, backgroundColor: 'rgba(17,24,39,0.72)', color: '#fff', fontSize: 12.5, fontWeight: 700 }}>Soil, rain and land: what the engine reads at each farm pin</span>
       </div>
 
       {/* ── What decides the score: the 12 weights as one bar ── */}

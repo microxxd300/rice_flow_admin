@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { C } from '../theme';
+import { emptyPic } from '../assets/pictures';
 import { api } from '../services/api';
 import {
-  Upload, FileText, CheckCircle2, XCircle, Info, AlertTriangle, Trash2, RefreshCw,
+  Upload, FileText, XCircle, Info, AlertTriangle, Trash2, RefreshCw,
 } from 'lucide-react';
 
 const shadow = '0 1px 6px rgba(26,26,46,0.06), 0 0 1px rgba(26,26,46,0.04)';
@@ -214,7 +215,7 @@ export default function Import({ embedded = false, onImported } = {}) {
       {status === 'success' && result && (
         <div style={{ ...card, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', backgroundColor: C.successLight, display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${C.borderLight}` }}>
-            <CheckCircle2 size={16} color={C.success} />
+            <img src={emptyPic('import_done')} alt="" style={{ width: 44, height: 44, objectFit: 'contain' }} />
             <p style={{ fontSize: 13, fontWeight: 700, color: C.success }}>{result.message}</p>
           </div>
           <div style={{ padding: '16px 18px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>

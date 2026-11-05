@@ -5,6 +5,7 @@ import {
   ArrowUpRight, Activity,
 } from 'lucide-react';
 import { C, cardShadow } from '../theme';
+import { emptyPic, ecosystemPic } from '../assets/pictures';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin } from '../permissions';
@@ -13,7 +14,6 @@ import { seasonProgress } from '../season';
 import ChangeList from '../components/ChangeList';
 import Skeleton, { SkeletonStyles } from '../components/Skeleton';
 import panaboMap from '../assets/brand/panabo_map.svg';
-import noFarm from '../assets/empty/no_farm.png';
 import noHarvest from '../assets/empty/no_harvest.png';
 import s01 from '../assets/growth/stage_01.png';
 import s02 from '../assets/growth/stage_02.png';
@@ -267,7 +267,7 @@ export default function Dashboard() {
 
           {rows.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '22px 0' }}>
-              <img src={noFarm} alt="" style={{ width: 110, height: 110, objectFit: 'contain' }} />
+              <img src={emptyPic('all_on_track')} alt="" style={{ width: 110, height: 110, objectFit: 'contain' }} />
               <p style={{ fontSize: 13.5, fontWeight: 600, color: C.textSecondary, marginTop: 6 }}>Nothing here. Every farm is on track.</p>
             </div>
           ) : (
@@ -377,7 +377,10 @@ export default function Dashboard() {
                 <span style={{ width: 32, height: 32, borderRadius: 11, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, backgroundColor: i === 0 ? C.ink : C.background, color: i === 0 ? '#fff' : C.text }}>{i + 1}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.common_name}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, fontSize: 13.5, fontWeight: 700, color: C.text }}>
+                      {ecosystemPic(v.ecosystem) && <img src={ecosystemPic(v.ecosystem)} alt="" title={(v.ecosystem || '').replace(/_/g, ' ')} style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 }} />}
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.common_name}</span>
+                    </span>
                     <span style={{ fontSize: 12.5, color: C.textSecondary, whiteSpace: 'nowrap' }}>{v.rec_count} picks · {Number(v.avg_yield_t_ha || 0).toFixed(1)} t/ha</span>
                   </div>
                   <div style={{ height: 8, borderRadius: 4, backgroundColor: C.background, marginTop: 6, overflow: 'hidden' }}>

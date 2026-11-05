@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { C } from '../theme';
+import { ecosystemPic, emptyPic, HEADERS } from '../assets/pictures';
 import Import from './Import';
 import { api } from '../services/api';
 import { SkeletonStyles, SkelTableRow } from '../components/Skeleton';
@@ -667,6 +668,13 @@ export default function Datasets() {
         </div>
       </div>
 
+
+      {/* A slim photo strip: what this page is about, at a glance */}
+      <div style={{ position: 'relative', height: 112, borderRadius: 24, overflow: 'hidden', flexShrink: 0 }}>
+        <img src={HEADERS.grains} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        <span style={{ position: 'absolute', left: 16, bottom: 14, padding: '6px 12px', borderRadius: 12, backgroundColor: 'rgba(17,24,39,0.72)', color: '#fff', fontSize: 12.5, fontWeight: 700 }}>The NSIC varieties the engine can recommend in Panabo</span>
+      </div>
+
       {/* The catalogue at a glance: by ecosystem, the standouts, and what is hidden */}
       {(() => {
         const live = list.filter(v => v.is_active);
@@ -792,9 +800,12 @@ export default function Datasets() {
                     </div>
                   </td>
                   <td style={{ padding: '13px 20px' }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, backgroundColor: eco.bg, color: eco.color, textTransform: 'capitalize' }}>
-                      {(v.ecosystem || '').replace(/_/g, ' ')}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {ecosystemPic(v.ecosystem) && <img src={ecosystemPic(v.ecosystem)} alt="" style={{ width: 30, height: 30, objectFit: 'contain', flexShrink: 0 }} />}
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, backgroundColor: eco.bg, color: eco.color, textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
+                        {(v.ecosystem || '').replace(/_/g, ' ')}
+                      </span>
+                    </div>
                   </td>
                   <td style={{ padding: '13px 20px', textAlign: 'right', color: C.text, fontVariantNumeric: 'tabular-nums' }}>
                     {v.maturity_days} <span style={{ color: '#9CA3AF', fontSize: 11 }}>days</span>
@@ -849,8 +860,8 @@ export default function Datasets() {
             })}
             {loading && Array.from({ length: 5 }).map((_, i) => <SkelTableRow key={`sk-${i}`} cells={7} />)}
             {!loading && paginated.length === 0 && (
-              <tr><td colSpan={7} style={{ padding: '52px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
-                {filtered.length === 0 ? 'No varieties match your search.' : 'No varieties on this page.'}
+              <tr><td colSpan={7}>
+                <div style={{ padding: '48px 20px', textAlign: 'center' }}><img src={emptyPic('no_results')} alt="" style={{ width: 120, height: 120, objectFit: 'contain' }} /><p style={{ fontSize: 13.5, fontWeight: 600, color: C.textSecondary, marginTop: 6 }}>{filtered.length === 0 ? 'No varieties match your search.' : 'No varieties on this page.'}</p></div>
               </td></tr>
             )}
           </tbody>

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { C } from '../theme';
+import { emptyPic } from '../assets/pictures';
 import { api } from '../services/api';
 import { reverseGeocode, getCachedGeocode } from '../services/geocode';
 import { SkeletonStyles, SkelTableRow } from '../components/Skeleton';
@@ -1063,7 +1064,7 @@ export default function Users() {
 
             {loading && Array.from({ length: 5 }).map((_, i) => <SkelTableRow key={`sk-${i}`} cells={8} />)}
             {!loading && filtered.length === 0 && (
-              <tr><td colSpan={8} style={{ padding: '52px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>No users found.</td></tr>
+              <tr><td colSpan={8}><div style={{ padding: '48px 20px', textAlign: 'center' }}><img src={emptyPic('no_results')} alt="" style={{ width: 120, height: 120, objectFit: 'contain' }} /><p style={{ fontSize: 13.5, fontWeight: 600, color: C.textSecondary, marginTop: 6 }}>No users match your search.</p></div></td></tr>
             )}
           </tbody>
         </table>

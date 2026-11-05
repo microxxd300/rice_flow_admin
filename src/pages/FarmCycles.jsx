@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { C } from '../theme';
+import { emptyPic } from '../assets/pictures';
 import { api } from '../services/api';
 import {
   Search, ChevronLeft, ChevronRight, MapPin, Sprout, Leaf, Sun, Wheat,
@@ -481,9 +482,7 @@ export default function FarmCycles() {
           ))}
 
           {filtered.length === 0 && (
-            <div style={{ padding: '60px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
-              No farm cycles found.
-            </div>
+<div style={{ padding: '56px 20px', textAlign: 'center' }}><img src={emptyPic('no_cycles')} alt="" style={{ width: 120, height: 120, objectFit: 'contain' }} /><p style={{ fontSize: 13.5, fontWeight: 600, color: C.textSecondary, marginTop: 6 }}>{cycles.length ? 'No farm cycles match your search.' : 'No farm cycles yet.'}</p></div>
           )}
 
           {totalPages > 1 && <Pagination page={page} totalPages={totalPages} setPage={setPage} />}
@@ -494,7 +493,7 @@ export default function FarmCycles() {
       {view === 'grid' && (
         <div>
           {filtered.length === 0 && (
-            <div style={{ ...card, padding: '60px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>No farm cycles found.</div>
+            <div style={card}><div style={{ padding: '56px 20px', textAlign: 'center' }}><img src={emptyPic('no_cycles')} alt="" style={{ width: 120, height: 120, objectFit: 'contain' }} /><p style={{ fontSize: 13.5, fontWeight: 600, color: C.textSecondary, marginTop: 6 }}>{cycles.length ? 'No farm cycles match your search.' : 'No farm cycles yet.'}</p></div></div>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
             {paginated.map(c => (
