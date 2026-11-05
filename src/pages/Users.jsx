@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { C } from '../theme';
+import { emptyPic } from '../assets/pictures';
 import { api } from '../services/api';
 import { reverseGeocode, getCachedGeocode } from '../services/geocode';
 import { SkeletonStyles, SkelTableRow } from '../components/Skeleton';
 import {
   Search, UserCheck, UserX, Eye, Pencil, Trash2, Plus, Users as UsersIcon,
-  UserCheck2, UserMinus, ChevronLeft, ChevronRight, X, Mail, Phone, MapPin,
+  ChevronLeft, ChevronRight, X, Mail, Phone, MapPin,
   Shield, Calendar, Clock, Hash, AtSign, AlertCircle, AlertTriangle,
   CheckCircle2, Eye as EyeIcon, EyeOff,
 } from 'lucide-react';
@@ -90,26 +91,6 @@ function Dropdown({ value, onChange, options, placeholder }) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function StatCard({ label, value, unit, badge, green, Icon }) {
-  return (
-    <div style={{ backgroundColor: C.surface, borderRadius: 12, boxShadow: shadow, border: `1px solid ${C.borderLight}`, padding: '20px 22px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-        <p style={{ fontSize: 12, fontWeight: 500, color: '#9CA3AF' }}>{label}</p>
-        <Icon size={14} color="#D1D5DB" />
-      </div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, marginBottom: 12 }}>
-        <p style={{ fontSize: 36, fontWeight: 800, lineHeight: 1, color: C.text }}>{value}</p>
-        {unit && <p style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 3 }}>{unit}</p>}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <span style={{ fontSize: 11, fontWeight: 600, backgroundColor: green ? C.successLight : C.errorLight, color: green ? C.success : C.error, borderRadius: 20, padding: '2px 9px' }}>
-          {badge}
-        </span>
-      </div>
     </div>
   );
 }
@@ -409,7 +390,7 @@ function UserFormModal({ open, initial, onClose, onSaved }) {
           </button>
           <button onClick={handleSave} disabled={saving} style={{
             height: 38, padding: '0 18px', fontSize: 13, fontWeight: 600,
-            color: '#fff', backgroundColor: saving ? '#9CA3AF' : C.primary,
+            color: '#fff', backgroundColor: saving ? '#9CA3AF' : C.ink,
             border: 'none', borderRadius: 10,
             cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
             display: 'flex', alignItems: 'center', gap: 6,
@@ -671,6 +652,8 @@ const normalizeFromServer = (u) => ({
 });
 
 export default function Users() {
+  // "New this week" counts from when the page opened
+  const [weekAgo] = useState(() => Date.now() - 7 * 86400000);
   const [search, setSearch]   = useState('');
   const [statusFilter, setStatus] = useState('');
   const [roleFilter, setRole] = useState('');
@@ -740,7 +723,6 @@ export default function Users() {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const active     = users.filter(u => u.status === 'Active').length;
   const inactive   = users.filter(u => u.status === 'Inactive').length;
 
 
@@ -784,16 +766,16 @@ export default function Users() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Users</h1>
-          <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
-            Manage registered farmer and admin accounts — create, edit, and toggle access.
+          <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.6px', color: C.text }}>Users</h1>
+          <p style={{ fontSize: 13, color: C.textSecondary, marginTop: 4 }}>
+            Farmers and the two staff roles (admin and validator): create, edit, and turn access on or off.
           </p>
         </div>
         <button
           onClick={() => { setEditing(null); setModalOpen(true); }}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            backgroundColor: C.primary, color: '#fff',
+            backgroundColor: C.ink, color: '#fff',
             border: 'none', borderRadius: 10, padding: '9px 16px',
             fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
           }}>
@@ -802,12 +784,69 @@ export default function Users() {
         </button>
       </div>
 
-      {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-        <StatCard label="Total Users"    value={users.length} unit="users"    badge="all registered"  green={true}  Icon={UsersIcon}  />
-        <StatCard label="Active Users"   value={active}       unit="active"   badge={`${active} can log in`} green={true}  Icon={UserCheck2} />
-        <StatCard label="Inactive Users" value={inactive}     unit="inactive" badge={inactive > 0 ? `${inactive} disabled` : 'none disabled'} green={false} Icon={UserMinus}  />
-      </div>
+      {/* Farmers, the staff, and where the farmers are */}
+      {(() => {
+        const farmers = users.filter(u => !u.isStaff);
+        const staff = users.filter(u => u.isStaff).sort((x, y) => Number(y.isSuperuser) - Number(x.isSuperuser));
+        const newThisWeek = farmers.filter(u => u.dateJoined && new Date(u.dateJoined).getTime() >= weekAgo).length;
+        const withFarm = farmers.filter(u => u.farmCount > 0).length;
+        const byBrgy = Object.entries(farmers.reduce((m, u) => {
+          const b = u.gpsBarangay || u.barangay;
+          if (b) m[b] = (m[b] || 0) + 1;
+          return m;
+        }, {})).sort((x, y) => y[1] - x[1]).slice(0, 5);
+        const tile = { backgroundColor: C.surface, borderRadius: 24, padding: '18px 22px', boxShadow: '0 4px 14px rgba(0,0,0,0.05)' };
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1.3fr)', gap: 16 }}>
+            <div style={tile}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Farmers</p>
+              <p style={{ marginTop: 8 }}>
+                <span style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', color: C.text }}>{farmers.length}</span>
+              </p>
+              <p style={{ fontSize: 12.5, color: C.textSecondary, marginTop: 4 }}>
+                {withFarm} with a farm pinned{newThisWeek > 0 ? ` · +${newThisWeek} this week` : ''}
+                {inactive > 0 ? ` · ${inactive} turned off` : ''}
+              </p>
+            </div>
+            <div style={tile}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 10 }}>Staff</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {staff.map(u => (
+                  <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ width: 32, height: 32, borderRadius: 16, flexShrink: 0, backgroundColor: C.ink, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>
+                      {(u.name || u.username || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.name || u.username}</p>
+                      {/* (last_login is not kept: the JWT sign-in does not update it) */}
+                      <p style={{ fontSize: 11.5, color: C.textSecondary }}>{u.isSuperuser ? 'Full access' : 'Checks farms, fixes varieties'}</p>
+                    </div>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 8, backgroundColor: u.isSuperuser ? C.ink : C.primaryLighter, color: u.isSuperuser ? '#fff' : '#047857' }}>
+                      {u.isSuperuser ? 'Admin' : 'Validator'}
+                    </span>
+                  </div>
+                ))}
+                {staff.length === 0 && <p style={{ fontSize: 12.5, color: C.textSecondary }}>No staff accounts.</p>}
+              </div>
+            </div>
+            <div style={tile}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 10 }}>Farmers by barangay</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                {byBrgy.map(([b, n]) => (
+                  <div key={b} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 110, fontSize: 12.5, fontWeight: 600, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b}</span>
+                    <div style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: C.background, overflow: 'hidden' }}>
+                      <div style={{ width: `${(n / byBrgy[0][1]) * 100}%`, height: '100%', borderRadius: 4, backgroundColor: C.primary }} />
+                    </div>
+                    <span style={{ width: 22, textAlign: 'right', fontSize: 12, color: C.textSecondary }}>{n}</span>
+                  </div>
+                ))}
+                {byBrgy.length === 0 && <p style={{ fontSize: 12.5, color: C.textSecondary }}>No barangays yet.</p>}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Filter bar */}
       <div style={{ backgroundColor: C.surface, borderRadius: 12, boxShadow: shadow, border: `1px solid ${C.borderLight}`, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1025,7 +1064,7 @@ export default function Users() {
 
             {loading && Array.from({ length: 5 }).map((_, i) => <SkelTableRow key={`sk-${i}`} cells={8} />)}
             {!loading && filtered.length === 0 && (
-              <tr><td colSpan={8} style={{ padding: '52px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>No users found.</td></tr>
+              <tr><td colSpan={8}><div style={{ padding: '48px 20px', textAlign: 'center' }}><img src={emptyPic('no_results')} alt="" style={{ width: 120, height: 120, objectFit: 'contain' }} /><p style={{ fontSize: 13.5, fontWeight: 600, color: C.textSecondary, marginTop: 6 }}>No users match your search.</p></div></td></tr>
             )}
           </tbody>
         </table>
@@ -1038,7 +1077,7 @@ export default function Users() {
                 <ChevronLeft size={15} color={page === 1 ? '#D1D5DB' : '#6B7280'} />
               </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                <button key={p} onClick={() => setPage(p)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${page === p ? C.primary : C.borderLight}`, backgroundColor: page === p ? C.primary : C.surface, color: page === p ? '#fff' : '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button key={p} onClick={() => setPage(p)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${page === p ? C.ink : C.borderLight}`, backgroundColor: page === p ? C.ink : C.surface, color: page === p ? '#fff' : '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                   {p}
                 </button>
               ))}

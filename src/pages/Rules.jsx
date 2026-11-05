@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, createContext, useContext } from 'react';
 import { C } from '../theme';
+import { factorPic } from '../assets/pictures';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin } from '../permissions';
@@ -211,6 +212,11 @@ function CardShell({ rule, weight, onWeight, locked, children }) {
     <div style={{ ...baseCard, padding: 22 }}>
       {/* Title row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, gap: 14 }}>
+        {factorPic(rule.key) && (
+          <div style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: C.background, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <img src={factorPic(rule.key)} alt="" style={{ width: 36, height: 36, objectFit: 'contain' }} />
+          </div>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{rule.label}</p>
           <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 3 }}>
@@ -609,7 +615,7 @@ export default function Rules() {
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Suitability Rules</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.6px', color: C.text }}>Suitability Rules</h1>
           <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
             FAO suitability ranges and Weighted Linear Combination weights used by the rule-based RSI engine.
           </p>
@@ -646,7 +652,7 @@ export default function Rules() {
           <button onClick={handleSave} disabled={saving || loading}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              backgroundColor: (saving || loading) ? C.surfaceAlt : C.primary,
+              backgroundColor: (saving || loading) ? C.surfaceAlt : C.ink,
               color: (saving || loading) ? '#9CA3AF' : '#fff',
               border: 'none', borderRadius: 10,
               padding: '9px 16px', fontSize: 13, fontWeight: 600,
@@ -708,6 +714,48 @@ export default function Rules() {
           </span>
         )}
       </div>
+
+
+
+      {/* ── What decides the score: the 12 weights as one bar ── */}
+      {(() => {
+        const GROUP_TONE = { Soil: '#B45309', Climate: '#2563EB', Topography: '#059669', Variety: '#111827' };
+        const sorted = [...rules].sort((a, b) => (parseFloat(b.weight) || 0) - (parseFloat(a.weight) || 0));
+        const total = totalWeight || 1;
+        return (
+          <div style={{ backgroundColor: C.surface, borderRadius: 24, padding: '20px 24px', boxShadow: '0 4px 14px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <p style={{ fontSize: 15, fontWeight: 700, color: C.text }}>What decides a farm's score</p>
+                <p style={{ fontSize: 12.5, color: C.textSecondary, marginTop: 3 }}>The weights of the 12 factors, adding up to 1.00. The longer the piece, the more it counts.</p>
+              </div>
+              {readOnly && (
+                <span style={{ fontSize: 11.5, fontWeight: 700, padding: '5px 10px', borderRadius: 10, backgroundColor: C.background, color: C.text, whiteSpace: 'nowrap' }}>View only · the admin edits rules</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', height: 26, borderRadius: 13, overflow: 'hidden', marginTop: 16, gap: 2 }}>
+              {sorted.map(r => (
+                <div key={r.key} title={`${r.label}: ${(parseFloat(r.weight) || 0).toFixed(2)}`} style={{
+                  width: `${((parseFloat(r.weight) || 0) / total) * 100}%`, backgroundColor: GROUP_TONE[r.group] || C.ink,
+                  opacity: 0.55 + 0.45 * ((parseFloat(r.weight) || 0) / (parseFloat(sorted[0]?.weight) || 1)),
+                }} />
+              ))}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px', marginTop: 14 }}>
+              {GROUPS.map(g => (
+                <span key={g} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: C.text }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: GROUP_TONE[g] }} />
+                  {g} {rules.filter(r => r.group === g).reduce((n, r) => n + (parseFloat(r.weight) || 0), 0).toFixed(2)}
+                </span>
+              ))}
+              <span style={{ flex: 1 }} />
+              <span style={{ fontSize: 12.5, color: C.textSecondary }}>
+                Biggest: {sorted.slice(0, 3).map(r => `${r.label} ${(parseFloat(r.weight) || 0).toFixed(2)}`).join(' · ')}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Filter bar ────────────────────────────────────────────────── */}
       <div style={{

@@ -19,7 +19,6 @@ const load = {
   cycles:     () => import('./pages/FarmCycles'),
   users:      () => import('./pages/Users'),
   datasets:   () => import('./pages/Datasets'),
-  imports:    () => import('./pages/Import'),
   rules:      () => import('./pages/Rules'),
   changes:    () => import('./pages/ChangeLog'),
 };
@@ -29,7 +28,6 @@ const FarmMap    = lazy(load.map);
 const FarmCycles = lazy(load.cycles);
 const Users      = lazy(load.users);
 const Datasets   = lazy(load.datasets);
-const Import     = lazy(load.imports);
 const Rules      = lazy(load.rules);
 const ChangeLog  = lazy(load.changes);
 
@@ -71,13 +69,13 @@ function AppRoutes() {
 
   return (
     <div style={{
-      minHeight: '100vh', width: '100%', backgroundColor: '#E4E8E5',
-      display: 'flex', justifyContent: 'center', padding: 20, boxSizing: 'border-box',
+      minHeight: '100vh', width: '100%', backgroundColor: C.background,
+      display: 'flex', boxSizing: 'border-box',
     }}>
+      {/* The whole window: the sidebar on the left, the page using all the width left */}
       <div style={{
-        width: '100%', maxWidth: 1400, height: 'calc(100vh - 40px)',
-        backgroundColor: C.background, borderRadius: 26, overflow: 'hidden',
-        boxShadow: '0 12px 48px rgba(26,26,46,0.10), 0 2px 8px rgba(26,26,46,0.05)',
+        width: '100%', height: '100vh',
+        backgroundColor: C.background, overflow: 'hidden',
         display: 'flex',
       }}>
         <Sidebar />
@@ -90,7 +88,8 @@ function AppRoutes() {
               <Route path="/users"    element={<Guarded path="/users"><Users /></Guarded>} />
               <Route path="/datasets" element={<Guarded path="/datasets"><Datasets /></Guarded>} />
               <Route path="/rules"    element={<Guarded path="/rules"><Rules /></Guarded>} />
-              <Route path="/import"   element={<Guarded path="/import"><Import /></Guarded>} />
+              {/* Import is a panel on Rice Varieties now; old links land there */}
+              <Route path="/import"   element={<Navigate to="/datasets" replace />} />
               <Route path="/changes"  element={<Guarded path="/changes"><ChangeLog /></Guarded>} />
               <Route path="*"         element={<Navigate to="/" />} />
             </Routes>

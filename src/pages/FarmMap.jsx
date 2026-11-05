@@ -104,7 +104,7 @@ function HeatLayer({ farms, mode = 'density' }) {
       maxZoom: 17,
       minOpacity: 0.45,
       gradient: {
-        0.2: '#3D9D5E',
+        0.2: '#10B981',
         0.4: '#F9A825',
         0.7: '#F5A623',
         1.0: '#E74C3C',
@@ -342,11 +342,12 @@ export default function FarmMap() {
 
       {/* Header */}
       <div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Farm Map</h1>
+        <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.6px', color: C.text }}>Farm Map</h1>
         <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
           Real GPS locations of all pinned farms — coordinates captured from the mobile app.
         </p>
       </div>
+
 
       {/* Map */}
       <div style={card}>
@@ -452,7 +453,7 @@ export default function FarmMap() {
                 <span style={{ fontSize: 10, color: '#9CA3AF' }}>low</span>
                 <div style={{
                   width: 90, height: 6, borderRadius: 4,
-                  background: 'linear-gradient(90deg, #3D9D5E, #F9A825, #F5A623, #E74C3C)',
+                  background: 'linear-gradient(90deg, #10B981, #F9A825, #F5A623, #E74C3C)',
                 }} />
                 <span style={{ fontSize: 10, color: '#9CA3AF' }}>high</span>
               </div>
@@ -602,7 +603,7 @@ export default function FarmMap() {
                 <ChevronLeft size={15} color={page === 1 ? '#D1D5DB' : '#6B7280'} />
               </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                <button key={p} onClick={() => setPage(p)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${page === p ? C.primary : C.borderLight}`, backgroundColor: page === p ? C.primary : C.surface, color: page === p ? '#fff' : '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button key={p} onClick={() => setPage(p)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${page === p ? C.ink : C.borderLight}`, backgroundColor: page === p ? C.ink : C.surface, color: page === p ? '#fff' : '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                   {p}
                 </button>
               ))}

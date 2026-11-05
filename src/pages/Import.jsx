@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { C } from '../theme';
+import { emptyPic } from '../assets/pictures';
 import { api } from '../services/api';
 import {
-  Upload, FileText, CheckCircle2, XCircle, Info, AlertTriangle, Trash2, RefreshCw,
+  Upload, FileText, Info, AlertTriangle, Trash2, RefreshCw,
 } from 'lucide-react';
 
 const shadow = '0 1px 6px rgba(26,26,46,0.06), 0 0 1px rgba(26,26,46,0.04)';
@@ -33,7 +34,9 @@ const TIPS = [
 const isCsv = (file) =>
   file?.name?.toLowerCase().endsWith('.csv');
 
-export default function Import() {
+/** The CSV import. `embedded`: inside the Rice Varieties page's panel (no page header);
+    `onImported` runs after a good upload so the list refreshes. */
+export default function Import({ embedded = false, onImported } = {}) {
   const [file, setFile]       = useState(null);
   const [status, setStatus]   = useState('idle'); // idle | uploading | success | error
   const [error, setError]     = useState('');
@@ -89,6 +92,7 @@ export default function Import() {
       const res = await api.importVarietyCSV(file);
       setResult(res);
       setStatus('success');
+      onImported?.();
     } catch (err) {
       setStatus('error');
       setError(err?.message || 'Upload failed.');
@@ -108,11 +112,11 @@ export default function Import() {
   };
 
   return (
-    <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: C.background, minHeight: '100%' }}>
+    <div style={{ padding: embedded ? 0 : '28px 32px', display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: embedded ? 'transparent' : C.background, minHeight: embedded ? 0 : '100%' }}>
 
       {/* Header */}
-      <div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Import Varieties</h1>
+      <div style={{ display: embedded ? 'none' : 'block' }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.6px', color: C.text }}>Import Varieties</h1>
         <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
           Bulk-import rice varieties from a CSV file. Existing varieties are updated by NSIC code; new ones are added.
         </p>
@@ -174,7 +178,7 @@ export default function Import() {
           <button onClick={handleUpload} disabled={status === 'uploading'} style={{
             height: 38, padding: '0 18px', fontSize: 13, fontWeight: 600,
             color: '#fff',
-            backgroundColor: status === 'uploading' ? '#9CA3AF' : C.primary,
+            backgroundColor: status === 'uploading' ? '#9CA3AF' : C.ink,
             border: 'none', borderRadius: 10,
             cursor: status === 'uploading' ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
             display: 'flex', alignItems: 'center', gap: 6,
@@ -194,7 +198,7 @@ export default function Import() {
           borderLeft: `3px solid ${C.error}`,
           display: 'flex', alignItems: 'flex-start', gap: 12,
         }}>
-          <XCircle size={16} color={C.error} style={{ marginTop: 1, flexShrink: 0 }} />
+          <img src={emptyPic('import_failed')} alt="" style={{ width: 44, height: 44, objectFit: 'contain', flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Upload rejected</p>
             <p style={{ fontSize: 12, color: C.textSecondary, marginTop: 3, lineHeight: 1.5 }}>{error}</p>
@@ -211,7 +215,7 @@ export default function Import() {
       {status === 'success' && result && (
         <div style={{ ...card, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', backgroundColor: C.successLight, display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${C.borderLight}` }}>
-            <CheckCircle2 size={16} color={C.success} />
+            <img src={emptyPic('import_done')} alt="" style={{ width: 44, height: 44, objectFit: 'contain' }} />
             <p style={{ fontSize: 13, fontWeight: 700, color: C.success }}>{result.message}</p>
           </div>
           <div style={{ padding: '16px 18px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>

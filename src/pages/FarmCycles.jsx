@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { C } from '../theme';
+import { emptyPic } from '../assets/pictures';
 import { api } from '../services/api';
 import {
   Search, ChevronLeft, ChevronRight, MapPin, Sprout, Leaf, Sun, Wheat,
@@ -9,10 +10,17 @@ import Skeleton, { SkeletonStyles, SkelStatCard } from '../components/Skeleton';
 import { normalizeStage } from '../stageGroups';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin } from '../permissions';
+import picLandPrep from '../assets/growth/stage_01.png';
+import picPlanting from '../assets/growth/stage_02.png';
+import picVegetative from '../assets/growth/stage_03.png';
+import picReproductive from '../assets/growth/stage_06.png';
+import picHarvesting from '../assets/growth/stage_09.png';
 
 const PAGE_SIZE = 10;
+// "Harvest coming up" looks this many days ahead
+const SOON_DAYS = 21;
 const shadow = '0 1px 6px rgba(26,26,46,0.06), 0 0 1px rgba(26,26,46,0.04)';
-const card   = { backgroundColor: C.surface, borderRadius: 12, boxShadow: shadow, border: `1px solid ${C.borderLight}`, overflow: 'hidden' };
+const card   = { backgroundColor: C.surface, borderRadius: 24, boxShadow: shadow, overflow: 'hidden' };
 
 const STAGES = ['Land Prep', 'Planting', 'Vegetative', 'Reproductive', 'Harvesting'];
 const STATUSES = [
@@ -37,6 +45,15 @@ const STAGE_ICON = {
   'Harvesting':   Wheat,
 };
 
+// Each group's picture: the app's growth stage closest to it
+const STAGE_PIC = {
+  'Land Prep':    picLandPrep,
+  'Planting':     picPlanting,
+  'Vegetative':   picVegetative,
+  'Reproductive': picReproductive,
+  'Harvesting':   picHarvesting,
+};
+
 const STATUS_COLOR = {
   active:    { bg: C.successLight, color: C.success },
   completed: { bg: C.infoLight,    color: C.info    },
@@ -45,11 +62,10 @@ const STATUS_COLOR = {
 
 // Map any backend stage name to one of our 5 buckets.
 function FarmAvatar({ stage }) {
-  const sc   = STAGE_COLOR[stage] || STAGE_COLOR['Land Prep'];
-  const Icon = STAGE_ICON[stage] || Tractor;
+  const sc = STAGE_COLOR[stage] || STAGE_COLOR['Land Prep'];
   return (
-    <div style={{ width: 46, height: 46, borderRadius: '50%', backgroundColor: sc.bg, border: `1.5px solid ${sc.dot}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-      <Icon size={20} color={sc.dot} />
+    <div style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: sc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <img src={STAGE_PIC[stage] || picLandPrep} alt="" style={{ width: 36, height: 36, objectFit: 'contain' }} />
     </div>
   );
 }
@@ -291,8 +307,8 @@ export default function FarmCycles() {
 
       {/* Header */}
       <div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Farm Cycle Monitoring</h1>
-        <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.6px', color: C.text }}>Farm cycles</h1>
+        <p style={{ fontSize: 13, color: C.textSecondary, marginTop: 4 }}>
           Active cropping cycles across all farmers — stage, variety, season, and harvest yield from live data.
         </p>
       </div>
@@ -312,13 +328,12 @@ export default function FarmCycles() {
       {/* Stage stat cards (active cycles only) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
         {STAGES.map(s => {
-          const sc   = STAGE_COLOR[s];
-          const Icon = STAGE_ICON[s];
+          const sc = STAGE_COLOR[s];
           return (
-            <div key={s} style={{ backgroundColor: C.surface, borderRadius: 12, boxShadow: shadow, border: `1px solid ${C.borderLight}`, padding: '20px 22px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-                <p style={{ fontSize: 12, fontWeight: 500, color: '#9CA3AF' }}>{s}</p>
-                <Icon size={14} color={sc.dot} />
+            <div key={s} style={{ backgroundColor: C.surface, borderRadius: 24, boxShadow: shadow, padding: '18px 20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{s}</p>
+                <img src={STAGE_PIC[s]} alt="" style={{ width: 48, height: 48, objectFit: 'contain', marginTop: -6 }} />
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, marginBottom: 12 }}>
                 <p style={{ fontSize: 36, fontWeight: 800, lineHeight: 1, color: C.text }}>{stageCounts[s]}</p>
@@ -332,8 +347,58 @@ export default function FarmCycles() {
         })}
       </div>
 
+      {/* What is coming, and the season in numbers */}
+      {(() => {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const days = iso => Math.round((new Date(iso + 'T00:00:00') - today) / 86400000);
+        const soon = cycles
+          .filter(c => c.status === 'active' && c.expected && days(c.expected) >= 0 && days(c.expected) <= SOON_DAYS)
+          .sort((a, b) => a.expected.localeCompare(b.expected));
+        const active = cycles.filter(c => c.status === 'active');
+        const count = st => cycles.filter(c => c.status === st).length;
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 16 }}>
+            <div style={{ ...card, padding: '18px 22px', overflow: 'visible' }}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: C.text }}>Harvest coming up</p>
+              <p style={{ fontSize: 12.5, color: C.textSecondary, marginTop: 3, marginBottom: 12 }}>Crops due in the next {SOON_DAYS} days, soonest first</p>
+              {soon.length === 0 ? (
+                <p style={{ fontSize: 13, color: C.textSecondary, padding: '8px 0' }}>No harvest due in the next {SOON_DAYS} days.</p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+                  {soon.slice(0, 6).map(c => (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 16, backgroundColor: C.background }}>
+                      <img src={picHarvesting} alt="" style={{ width: 34, height: 34, objectFit: 'contain' }} />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</p>
+                        <p style={{ fontSize: 12, color: C.textSecondary }}>{days(c.expected) === 0 ? 'Today' : `In ${days(c.expected)} days`} · {c.variety || '—'}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ ...card, padding: '18px 22px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, alignContent: 'start', overflow: 'visible' }}>
+              {[
+                ['Growing', active.length, 'crops'],
+                ['Area', active.reduce((n, c) => n + c.area, 0).toFixed(1), 'ha'],
+                ['Completed', count('completed'), ''],
+                ['Abandoned', count('abandoned'), ''],
+              ].map(([label, value, unit]) => (
+                <div key={label}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary }}>{label}</p>
+                  <p style={{ marginTop: 4 }}>
+                    <span style={{ fontSize: 24, fontWeight: 800, color: C.text }}>{value}</span>
+                    {unit && <span style={{ fontSize: 12, color: C.textSecondary, marginLeft: 4 }}>{unit}</span>}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Filter bar */}
-      <div style={{ backgroundColor: C.surface, borderRadius: 12, boxShadow: shadow, border: `1px solid ${C.borderLight}`, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ backgroundColor: C.surface, borderRadius: 20, boxShadow: shadow, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ position: 'relative', flex: 1 }}>
           <Search size={13} color="#9CA3AF" style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)' }} />
           <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
@@ -346,10 +411,10 @@ export default function FarmCycles() {
         <Dropdown value={userFilter}   onChange={v => { setUser(v);    setPage(1); }} placeholder="All Farmers"  options={uniqueUsers} />
 
         <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
-          <button onClick={() => setView('list')} style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${view === 'list' ? C.primary : C.borderLight}`, backgroundColor: view === 'list' ? C.primary : C.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={() => setView('list')} style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${view === 'list' ? C.ink : C.borderLight}`, backgroundColor: view === 'list' ? C.ink : C.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <List size={15} color={view === 'list' ? '#fff' : '#9CA3AF'} />
           </button>
-          <button onClick={() => setView('grid')} style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${view === 'grid' ? C.primary : C.borderLight}`, backgroundColor: view === 'grid' ? C.primary : C.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={() => setView('grid')} style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${view === 'grid' ? C.ink : C.borderLight}`, backgroundColor: view === 'grid' ? C.ink : C.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <LayoutGrid size={15} color={view === 'grid' ? '#fff' : '#9CA3AF'} />
           </button>
         </div>
@@ -417,9 +482,7 @@ export default function FarmCycles() {
           ))}
 
           {filtered.length === 0 && (
-            <div style={{ padding: '60px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
-              No farm cycles found.
-            </div>
+<div style={{ padding: '56px 20px', textAlign: 'center' }}><img src={emptyPic('no_cycles')} alt="" style={{ width: 120, height: 120, objectFit: 'contain' }} /><p style={{ fontSize: 13.5, fontWeight: 600, color: C.textSecondary, marginTop: 6 }}>{cycles.length ? 'No farm cycles match your search.' : 'No farm cycles yet.'}</p></div>
           )}
 
           {totalPages > 1 && <Pagination page={page} totalPages={totalPages} setPage={setPage} />}
@@ -430,7 +493,7 @@ export default function FarmCycles() {
       {view === 'grid' && (
         <div>
           {filtered.length === 0 && (
-            <div style={{ ...card, padding: '60px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>No farm cycles found.</div>
+            <div style={card}><div style={{ padding: '56px 20px', textAlign: 'center' }}><img src={emptyPic('no_cycles')} alt="" style={{ width: 120, height: 120, objectFit: 'contain' }} /><p style={{ fontSize: 13.5, fontWeight: 600, color: C.textSecondary, marginTop: 6 }}>{cycles.length ? 'No farm cycles match your search.' : 'No farm cycles yet.'}</p></div></div>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
             {paginated.map(c => (
@@ -498,7 +561,7 @@ function Pagination({ page, totalPages, setPage }) {
           <ChevronLeft size={15} color={page === 1 ? '#D1D5DB' : '#6B7280'} />
         </button>
         {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-          <button key={p} onClick={() => setPage(p)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${page === p ? C.primary : C.borderLight}`, backgroundColor: page === p ? C.primary : C.surface, color: page === p ? '#fff' : '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button key={p} onClick={() => setPage(p)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${page === p ? C.ink : C.borderLight}`, backgroundColor: page === p ? C.ink : C.surface, color: page === p ? '#fff' : '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
             {p}
           </button>
         ))}
