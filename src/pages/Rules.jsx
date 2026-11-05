@@ -709,6 +709,46 @@ export default function Rules() {
         )}
       </div>
 
+      {/* ── What decides the score: the 12 weights as one bar ── */}
+      {(() => {
+        const GROUP_TONE = { Soil: '#B45309', Climate: '#2563EB', Topography: '#059669', Variety: '#111827' };
+        const sorted = [...rules].sort((a, b) => (parseFloat(b.weight) || 0) - (parseFloat(a.weight) || 0));
+        const total = totalWeight || 1;
+        return (
+          <div style={{ backgroundColor: C.surface, borderRadius: 24, padding: '20px 24px', boxShadow: '0 4px 14px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <p style={{ fontSize: 15, fontWeight: 700, color: C.text }}>What decides a farm's score</p>
+                <p style={{ fontSize: 12.5, color: C.textSecondary, marginTop: 3 }}>The weights of the 12 factors, adding up to 1.00. The longer the piece, the more it counts.</p>
+              </div>
+              {readOnly && (
+                <span style={{ fontSize: 11.5, fontWeight: 700, padding: '5px 10px', borderRadius: 10, backgroundColor: C.background, color: C.text, whiteSpace: 'nowrap' }}>View only · the admin edits rules</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', height: 26, borderRadius: 13, overflow: 'hidden', marginTop: 16, gap: 2 }}>
+              {sorted.map(r => (
+                <div key={r.key} title={`${r.label}: ${(parseFloat(r.weight) || 0).toFixed(2)}`} style={{
+                  width: `${((parseFloat(r.weight) || 0) / total) * 100}%`, backgroundColor: GROUP_TONE[r.group] || C.ink,
+                  opacity: 0.55 + 0.45 * ((parseFloat(r.weight) || 0) / (parseFloat(sorted[0]?.weight) || 1)),
+                }} />
+              ))}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px', marginTop: 14 }}>
+              {GROUPS.map(g => (
+                <span key={g} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: C.text }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: GROUP_TONE[g] }} />
+                  {g} {rules.filter(r => r.group === g).reduce((n, r) => n + (parseFloat(r.weight) || 0), 0).toFixed(2)}
+                </span>
+              ))}
+              <span style={{ flex: 1 }} />
+              <span style={{ fontSize: 12.5, color: C.textSecondary }}>
+                Biggest: {sorted.slice(0, 3).map(r => `${r.label} ${(parseFloat(r.weight) || 0).toFixed(2)}`).join(' · ')}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Filter bar ────────────────────────────────────────────────── */}
       <div style={{
         backgroundColor: C.surface, borderRadius: 12,
