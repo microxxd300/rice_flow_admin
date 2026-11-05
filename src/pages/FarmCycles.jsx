@@ -16,6 +16,8 @@ import picReproductive from '../assets/growth/stage_06.png';
 import picHarvesting from '../assets/growth/stage_09.png';
 
 const PAGE_SIZE = 10;
+// "Harvest coming up" looks this many days ahead
+const SOON_DAYS = 21;
 const shadow = '0 1px 6px rgba(26,26,46,0.06), 0 0 1px rgba(26,26,46,0.04)';
 const card   = { backgroundColor: C.surface, borderRadius: 24, boxShadow: shadow, overflow: 'hidden' };
 
@@ -304,8 +306,8 @@ export default function FarmCycles() {
 
       {/* Header */}
       <div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Farm Cycle Monitoring</h1>
-        <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.6px', color: C.text }}>Farm cycles</h1>
+        <p style={{ fontSize: 13, color: C.textSecondary, marginTop: 4 }}>
           Active cropping cycles across all farmers — stage, variety, season, and harvest yield from live data.
         </p>
       </div>
@@ -343,6 +345,56 @@ export default function FarmCycles() {
           );
         })}
       </div>
+
+      {/* What is coming, and the season in numbers */}
+      {(() => {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const days = iso => Math.round((new Date(iso + 'T00:00:00') - today) / 86400000);
+        const soon = cycles
+          .filter(c => c.status === 'active' && c.expected && days(c.expected) >= 0 && days(c.expected) <= SOON_DAYS)
+          .sort((a, b) => a.expected.localeCompare(b.expected));
+        const active = cycles.filter(c => c.status === 'active');
+        const count = st => cycles.filter(c => c.status === st).length;
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 16 }}>
+            <div style={{ ...card, padding: '18px 22px', overflow: 'visible' }}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: C.text }}>Harvest coming up</p>
+              <p style={{ fontSize: 12.5, color: C.textSecondary, marginTop: 3, marginBottom: 12 }}>Crops due in the next {SOON_DAYS} days, soonest first</p>
+              {soon.length === 0 ? (
+                <p style={{ fontSize: 13, color: C.textSecondary, padding: '8px 0' }}>No harvest due in the next {SOON_DAYS} days.</p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+                  {soon.slice(0, 6).map(c => (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 16, backgroundColor: C.background }}>
+                      <img src={picHarvesting} alt="" style={{ width: 34, height: 34, objectFit: 'contain' }} />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</p>
+                        <p style={{ fontSize: 12, color: C.textSecondary }}>{days(c.expected) === 0 ? 'Today' : `In ${days(c.expected)} days`} · {c.variety || '—'}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ ...card, padding: '18px 22px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, alignContent: 'start', overflow: 'visible' }}>
+              {[
+                ['Growing', active.length, 'crops'],
+                ['Area', active.reduce((n, c) => n + c.area, 0).toFixed(1), 'ha'],
+                ['Completed', count('completed'), ''],
+                ['Abandoned', count('abandoned'), ''],
+              ].map(([label, value, unit]) => (
+                <div key={label}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary }}>{label}</p>
+                  <p style={{ marginTop: 4 }}>
+                    <span style={{ fontSize: 24, fontWeight: 800, color: C.text }}>{value}</span>
+                    {unit && <span style={{ fontSize: 12, color: C.textSecondary, marginLeft: 4 }}>{unit}</span>}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Filter bar */}
       <div style={{ backgroundColor: C.surface, borderRadius: 20, boxShadow: shadow, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
