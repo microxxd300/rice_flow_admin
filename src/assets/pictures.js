@@ -20,9 +20,6 @@ import no_changes from './empty/no_changes.png';
 import import_done from './empty/import_done.png';
 import import_failed from './empty/import_failed.png';
 import all_on_track from './empty/all_on_track.png';
-import header_map from './brand/header_map.jpg';
-import header_soil from './brand/header_soil.jpg';
-import header_grains from './brand/header_grains.jpg';
 
 const FACTORS = {
   soil_ph, soil_texture, organic_matter, drainage, avg_temperature, seasonal_rainfall,
@@ -30,7 +27,6 @@ const FACTORS = {
 };
 const ECOSYSTEMS = { irrigated_lowland, rainfed_lowland, upland };
 const EMPTY = { no_results, no_cycles, no_changes, import_done, import_failed, all_on_track };
-export const HEADERS = { map: header_map, soil: header_soil, grains: header_grains };
 
 /** A Suitability Rules factor (its key) → its icon, or null. */
 export const factorPic = key => FACTORS[key] ?? null;

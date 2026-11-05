@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, createContext, useContext } from 'react';
 import { C } from '../theme';
-import PhotoStrip from '../components/PhotoStrip';
-import { factorPic, HEADERS } from '../assets/pictures';
+import { factorPic } from '../assets/pictures';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin } from '../permissions';
@@ -717,8 +716,6 @@ export default function Rules() {
       </div>
 
 
-      {/* What this page is about, with its photo at its own size */}
-      <PhotoStrip src={HEADERS.soil} title="What the engine reads at each farm pin" text="Soil, rain, temperature and the lie of the land. Each factor below is scored from S1 to N, then weighted." />
 
       {/* ── What decides the score: the 12 weights as one bar ── */}
       {(() => {
