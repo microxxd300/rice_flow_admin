@@ -4,7 +4,7 @@ import { C } from '../theme';
 import { emptyPic } from '../assets/pictures';
 import { api } from '../services/api';
 import {
-  Upload, FileText, XCircle, Info, AlertTriangle, Trash2, RefreshCw,
+  Upload, FileText, Info, AlertTriangle, Trash2, RefreshCw,
 } from 'lucide-react';
 
 const shadow = '0 1px 6px rgba(26,26,46,0.06), 0 0 1px rgba(26,26,46,0.04)';
@@ -198,7 +198,7 @@ export default function Import({ embedded = false, onImported } = {}) {
           borderLeft: `3px solid ${C.error}`,
           display: 'flex', alignItems: 'flex-start', gap: 12,
         }}>
-          <XCircle size={16} color={C.error} style={{ marginTop: 1, flexShrink: 0 }} />
+          <img src={emptyPic('import_failed')} alt="" style={{ width: 44, height: 44, objectFit: 'contain', flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Upload rejected</p>
             <p style={{ fontSize: 12, color: C.textSecondary, marginTop: 3, lineHeight: 1.5 }}>{error}</p>
