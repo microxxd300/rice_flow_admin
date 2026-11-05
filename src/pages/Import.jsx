@@ -174,7 +174,7 @@ export default function Import() {
           <button onClick={handleUpload} disabled={status === 'uploading'} style={{
             height: 38, padding: '0 18px', fontSize: 13, fontWeight: 600,
             color: '#fff',
-            backgroundColor: status === 'uploading' ? '#9CA3AF' : C.primary,
+            backgroundColor: status === 'uploading' ? '#9CA3AF' : C.ink,
             border: 'none', borderRadius: 10,
             cursor: status === 'uploading' ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
             display: 'flex', alignItems: 'center', gap: 6,

@@ -409,7 +409,7 @@ function UserFormModal({ open, initial, onClose, onSaved }) {
           </button>
           <button onClick={handleSave} disabled={saving} style={{
             height: 38, padding: '0 18px', fontSize: 13, fontWeight: 600,
-            color: '#fff', backgroundColor: saving ? '#9CA3AF' : C.primary,
+            color: '#fff', backgroundColor: saving ? '#9CA3AF' : C.ink,
             border: 'none', borderRadius: 10,
             cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
             display: 'flex', alignItems: 'center', gap: 6,
@@ -793,7 +793,7 @@ export default function Users() {
           onClick={() => { setEditing(null); setModalOpen(true); }}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            backgroundColor: C.primary, color: '#fff',
+            backgroundColor: C.ink, color: '#fff',
             border: 'none', borderRadius: 10, padding: '9px 16px',
             fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
           }}>
@@ -1038,7 +1038,7 @@ export default function Users() {
                 <ChevronLeft size={15} color={page === 1 ? '#D1D5DB' : '#6B7280'} />
               </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                <button key={p} onClick={() => setPage(p)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${page === p ? C.primary : C.borderLight}`, backgroundColor: page === p ? C.primary : C.surface, color: page === p ? '#fff' : '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button key={p} onClick={() => setPage(p)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${page === p ? C.ink : C.borderLight}`, backgroundColor: page === p ? C.ink : C.surface, color: page === p ? '#fff' : '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                   {p}
                 </button>
               ))}

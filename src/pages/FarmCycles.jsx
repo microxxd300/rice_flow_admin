@@ -346,10 +346,10 @@ export default function FarmCycles() {
         <Dropdown value={userFilter}   onChange={v => { setUser(v);    setPage(1); }} placeholder="All Farmers"  options={uniqueUsers} />
 
         <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
-          <button onClick={() => setView('list')} style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${view === 'list' ? C.primary : C.borderLight}`, backgroundColor: view === 'list' ? C.primary : C.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={() => setView('list')} style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${view === 'list' ? C.ink : C.borderLight}`, backgroundColor: view === 'list' ? C.ink : C.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <List size={15} color={view === 'list' ? '#fff' : '#9CA3AF'} />
           </button>
-          <button onClick={() => setView('grid')} style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${view === 'grid' ? C.primary : C.borderLight}`, backgroundColor: view === 'grid' ? C.primary : C.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={() => setView('grid')} style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${view === 'grid' ? C.ink : C.borderLight}`, backgroundColor: view === 'grid' ? C.ink : C.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <LayoutGrid size={15} color={view === 'grid' ? '#fff' : '#9CA3AF'} />
           </button>
         </div>
@@ -498,7 +498,7 @@ function Pagination({ page, totalPages, setPage }) {
           <ChevronLeft size={15} color={page === 1 ? '#D1D5DB' : '#6B7280'} />
         </button>
         {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-          <button key={p} onClick={() => setPage(p)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${page === p ? C.primary : C.borderLight}`, backgroundColor: page === p ? C.primary : C.surface, color: page === p ? '#fff' : '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button key={p} onClick={() => setPage(p)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${page === p ? C.ink : C.borderLight}`, backgroundColor: page === p ? C.ink : C.surface, color: page === p ? '#fff' : '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
             {p}
           </button>
         ))}

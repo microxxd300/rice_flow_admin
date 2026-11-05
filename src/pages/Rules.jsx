@@ -646,7 +646,7 @@ export default function Rules() {
           <button onClick={handleSave} disabled={saving || loading}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              backgroundColor: (saving || loading) ? C.surfaceAlt : C.primary,
+              backgroundColor: (saving || loading) ? C.surfaceAlt : C.ink,
               color: (saving || loading) ? '#9CA3AF' : '#fff',
               border: 'none', borderRadius: 10,
               padding: '9px 16px', fontSize: 13, fontWeight: 600,
