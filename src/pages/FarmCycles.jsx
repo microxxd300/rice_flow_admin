@@ -9,10 +9,15 @@ import Skeleton, { SkeletonStyles, SkelStatCard } from '../components/Skeleton';
 import { normalizeStage } from '../stageGroups';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin } from '../permissions';
+import picLandPrep from '../assets/growth/stage_01.png';
+import picPlanting from '../assets/growth/stage_02.png';
+import picVegetative from '../assets/growth/stage_03.png';
+import picReproductive from '../assets/growth/stage_06.png';
+import picHarvesting from '../assets/growth/stage_09.png';
 
 const PAGE_SIZE = 10;
 const shadow = '0 1px 6px rgba(26,26,46,0.06), 0 0 1px rgba(26,26,46,0.04)';
-const card   = { backgroundColor: C.surface, borderRadius: 12, boxShadow: shadow, border: `1px solid ${C.borderLight}`, overflow: 'hidden' };
+const card   = { backgroundColor: C.surface, borderRadius: 24, boxShadow: shadow, overflow: 'hidden' };
 
 const STAGES = ['Land Prep', 'Planting', 'Vegetative', 'Reproductive', 'Harvesting'];
 const STATUSES = [
@@ -37,6 +42,15 @@ const STAGE_ICON = {
   'Harvesting':   Wheat,
 };
 
+// Each group's picture: the app's growth stage closest to it
+const STAGE_PIC = {
+  'Land Prep':    picLandPrep,
+  'Planting':     picPlanting,
+  'Vegetative':   picVegetative,
+  'Reproductive': picReproductive,
+  'Harvesting':   picHarvesting,
+};
+
 const STATUS_COLOR = {
   active:    { bg: C.successLight, color: C.success },
   completed: { bg: C.infoLight,    color: C.info    },
@@ -45,11 +59,10 @@ const STATUS_COLOR = {
 
 // Map any backend stage name to one of our 5 buckets.
 function FarmAvatar({ stage }) {
-  const sc   = STAGE_COLOR[stage] || STAGE_COLOR['Land Prep'];
-  const Icon = STAGE_ICON[stage] || Tractor;
+  const sc = STAGE_COLOR[stage] || STAGE_COLOR['Land Prep'];
   return (
-    <div style={{ width: 46, height: 46, borderRadius: '50%', backgroundColor: sc.bg, border: `1.5px solid ${sc.dot}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-      <Icon size={20} color={sc.dot} />
+    <div style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: sc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <img src={STAGE_PIC[stage] || picLandPrep} alt="" style={{ width: 36, height: 36, objectFit: 'contain' }} />
     </div>
   );
 }
@@ -312,13 +325,12 @@ export default function FarmCycles() {
       {/* Stage stat cards (active cycles only) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
         {STAGES.map(s => {
-          const sc   = STAGE_COLOR[s];
-          const Icon = STAGE_ICON[s];
+          const sc = STAGE_COLOR[s];
           return (
-            <div key={s} style={{ backgroundColor: C.surface, borderRadius: 12, boxShadow: shadow, border: `1px solid ${C.borderLight}`, padding: '20px 22px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-                <p style={{ fontSize: 12, fontWeight: 500, color: '#9CA3AF' }}>{s}</p>
-                <Icon size={14} color={sc.dot} />
+            <div key={s} style={{ backgroundColor: C.surface, borderRadius: 24, boxShadow: shadow, padding: '18px 20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{s}</p>
+                <img src={STAGE_PIC[s]} alt="" style={{ width: 48, height: 48, objectFit: 'contain', marginTop: -6 }} />
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, marginBottom: 12 }}>
                 <p style={{ fontSize: 36, fontWeight: 800, lineHeight: 1, color: C.text }}>{stageCounts[s]}</p>
@@ -333,7 +345,7 @@ export default function FarmCycles() {
       </div>
 
       {/* Filter bar */}
-      <div style={{ backgroundColor: C.surface, borderRadius: 12, boxShadow: shadow, border: `1px solid ${C.borderLight}`, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ backgroundColor: C.surface, borderRadius: 20, boxShadow: shadow, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ position: 'relative', flex: 1 }}>
           <Search size={13} color="#9CA3AF" style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)' }} />
           <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
