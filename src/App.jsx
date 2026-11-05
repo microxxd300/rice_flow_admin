@@ -69,13 +69,13 @@ function AppRoutes() {
 
   return (
     <div style={{
-      minHeight: '100vh', width: '100%', backgroundColor: '#E4E6E4',
-      display: 'flex', justifyContent: 'center', padding: 20, boxSizing: 'border-box',
+      minHeight: '100vh', width: '100%', backgroundColor: C.background,
+      display: 'flex', boxSizing: 'border-box',
     }}>
+      {/* The whole window: the sidebar on the left, the page using all the width left */}
       <div style={{
-        width: '100%', maxWidth: 1400, height: 'calc(100vh - 40px)',
-        backgroundColor: C.background, borderRadius: 28, overflow: 'hidden',
-        boxShadow: '0 18px 50px rgba(17,24,39,0.10)',
+        width: '100%', height: '100vh',
+        backgroundColor: C.background, overflow: 'hidden',
         display: 'flex',
       }}>
         <Sidebar />
