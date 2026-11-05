@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, createContext, useContext } from 'react';
 import { C } from '../theme';
+import PhotoStrip from '../components/PhotoStrip';
 import { factorPic, HEADERS } from '../assets/pictures';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -716,11 +717,8 @@ export default function Rules() {
       </div>
 
 
-      {/* A slim photo strip: what this page is about, at a glance */}
-      <div style={{ position: 'relative', height: 112, borderRadius: 24, overflow: 'hidden', flexShrink: 0 }}>
-        <img src={HEADERS.soil} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-        <span style={{ position: 'absolute', left: 16, bottom: 14, padding: '6px 12px', borderRadius: 12, backgroundColor: 'rgba(17,24,39,0.72)', color: '#fff', fontSize: 12.5, fontWeight: 700 }}>Soil, rain and land: what the engine reads at each farm pin</span>
-      </div>
+      {/* What this page is about, with its photo at its own size */}
+      <PhotoStrip src={HEADERS.soil} title="What the engine reads at each farm pin" text="Soil, rain, temperature and the lie of the land. Each factor below is scored from S1 to N, then weighted." />
 
       {/* ── What decides the score: the 12 weights as one bar ── */}
       {(() => {

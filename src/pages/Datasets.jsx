@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { C } from '../theme';
+import PhotoStrip from '../components/PhotoStrip';
 import { ecosystemPic, emptyPic, HEADERS } from '../assets/pictures';
 import Import from './Import';
 import { api } from '../services/api';
@@ -669,11 +670,8 @@ export default function Datasets() {
       </div>
 
 
-      {/* A slim photo strip: what this page is about, at a glance */}
-      <div style={{ position: 'relative', height: 112, borderRadius: 24, overflow: 'hidden', flexShrink: 0 }}>
-        <img src={HEADERS.grains} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-        <span style={{ position: 'absolute', left: 16, bottom: 14, padding: '6px 12px', borderRadius: 12, backgroundColor: 'rgba(17,24,39,0.72)', color: '#fff', fontSize: 12.5, fontWeight: 700 }}>The NSIC varieties the engine can recommend in Panabo</span>
-      </div>
+      {/* What this page is about, with its photo at its own size */}
+      <PhotoStrip src={HEADERS.grains} title="The varieties RiceFlow can recommend" text="NSIC-registered rice for Panabo. A hidden variety is never recommended to farmers." />
 
       {/* The catalogue at a glance: by ecosystem, the standouts, and what is hidden */}
       {(() => {

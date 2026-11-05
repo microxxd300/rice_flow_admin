@@ -6,6 +6,7 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from '../services/leafletSetup';
 import 'leaflet/dist/leaflet.css';
 import { C } from '../theme';
+import PhotoStrip from '../components/PhotoStrip';
 import { HEADERS } from '../assets/pictures';
 import { api } from '../services/api';
 import { reverseGeocode, getCachedGeocode } from '../services/geocode';
@@ -349,11 +350,8 @@ export default function FarmMap() {
         </p>
       </div>
 
-      {/* A slim photo strip: what this page is about, at a glance */}
-      <div style={{ position: 'relative', height: 112, borderRadius: 24, overflow: 'hidden', flexShrink: 0 }}>
-        <img src={HEADERS.map} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-        <span style={{ position: 'absolute', left: 16, bottom: 14, padding: '6px 12px', borderRadius: 12, backgroundColor: 'rgba(17,24,39,0.72)', color: '#fff', fontSize: 12.5, fontWeight: 700 }}>Rice paddies around Panabo City, from above</span>
-      </div>
+      {/* What this page is about, with its photo at its own size */}
+      <PhotoStrip src={HEADERS.map} title="Rice paddies around Panabo City" text="Every farm a farmer pinned in the app, on the map below." />
 
       {/* Map */}
       <div style={card}>
