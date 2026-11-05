@@ -115,7 +115,7 @@ export default function Import({ embedded = false, onImported } = {}) {
 
       {/* Header */}
       <div style={{ display: embedded ? 'none' : 'block' }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Import Varieties</h1>
+        <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.6px', color: C.text }}>Import Varieties</h1>
         <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
           Bulk-import rice varieties from a CSV file. Existing varieties are updated by NSIC code; new ones are added.
         </p>

@@ -614,7 +614,7 @@ export default function Datasets() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Rice Varieties</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.6px', color: C.text }}>Rice Varieties</h1>
           <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
             Manage the NSIC-registered rice variety dataset that feeds the recommendation engine.
           </p>

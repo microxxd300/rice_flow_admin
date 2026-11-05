@@ -609,7 +609,7 @@ export default function Rules() {
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Suitability Rules</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.6px', color: C.text }}>Suitability Rules</h1>
           <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
             FAO suitability ranges and Weighted Linear Combination weights used by the rule-based RSI engine.
           </p>

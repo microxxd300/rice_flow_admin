@@ -342,7 +342,7 @@ export default function FarmMap() {
 
       {/* Header */}
       <div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Farm Map</h1>
+        <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.6px', color: C.text }}>Farm Map</h1>
         <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
           Real GPS locations of all pinned farms — coordinates captured from the mobile app.
         </p>

@@ -4,9 +4,10 @@ import { C } from '../theme';
 import { api } from '../services/api';
 import Skeleton, { SkeletonStyles } from '../components/Skeleton';
 import ChangeList from '../components/ChangeList';
+import { groupByDay } from '../changeDays';
 
 const shadow   = '0 1px 6px rgba(26,26,46,0.06), 0 0 1px rgba(26,26,46,0.04)';
-const baseCard = { backgroundColor: C.surface, borderRadius: 14, border: `1px solid ${C.borderLight}`, boxShadow: shadow, overflow: 'hidden' };
+const baseCard = { backgroundColor: C.surface, borderRadius: 24, boxShadow: shadow, overflow: 'hidden' };
 
 const FILTERS = [
   { value: '',          label: 'Everyone'  },
@@ -55,7 +56,7 @@ export default function ChangeLog() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Change Log</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.6px', color: C.text }}>Change Log</h1>
           <p style={{ fontSize: 13, color: C.textTertiary, marginTop: 4 }}>
             Every change made from this website: who made it, when, and the old and new values.
           </p>
@@ -111,9 +112,17 @@ export default function ChangeLog() {
         {!loading && error && (
           <div style={{ padding: '36px 24px', textAlign: 'center', color: C.error, fontSize: 13 }}>{error}</div>
         )}
-        {!loading && !error && (
-          <ChangeList rows={shown} empty={rows.length ? 'No changes match the filter.' : 'No changes recorded yet.'} />
-        )}
+        {!loading && !error && (shown.length === 0
+          ? <ChangeList rows={[]} empty={rows.length ? 'No changes match the filter.' : 'No changes recorded yet.'} />
+          : groupByDay(shown).map(g => (
+            <div key={g.label}>
+              {/* One heading per day, so a busy day reads as one block */}
+              <p style={{ padding: '12px 20px 6px', fontSize: 12, fontWeight: 700, color: C.textSecondary, backgroundColor: C.background }}>
+                {g.label} <span style={{ fontWeight: 500 }}>· {g.rows.length}</span>
+              </p>
+              <ChangeList rows={g.rows} />
+            </div>
+          )))}
       </div>
     </div>
   );
