@@ -173,7 +173,7 @@ export const api = {
   warm(admin) {
     if (warmed) return;
     warmed = true;
-    ['auth/admin-stats/', 'farms/all/', 'varieties/?all=1',
+    ['auth/admin-stats/', 'auth/admin-season/', 'farms/all/', 'varieties/?all=1',
      'progress/admin/cycles/', 'recommendations/rules/',
      ...(admin ? ['auth/users/', CHANGES_PREVIEW] : [])]
       .forEach(p => { request('GET', p).catch(() => {}); });
@@ -187,6 +187,8 @@ export const api = {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh }),
   }),
   stats:        ()                => request('GET',  'auth/admin-stats/'),
+  // Crops per growth stage and the farms that need attention (both roles)
+  seasonBoard:  ()                => request('GET',  'auth/admin-season/'),
   // Change log (admin only): who changed what from this website
   changes:      ({ role, limit } = {}) => request('GET', `activity/changes/${query({ role, limit })}`),
   changesPreview: ()              => request('GET', CHANGES_PREVIEW),
