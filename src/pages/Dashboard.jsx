@@ -101,15 +101,17 @@ export default function Dashboard() {
   const loadAll = async ({ silent = false } = {}) => {
     if (!silent) { setRefreshing(true); api.invalidate(); }
     try {
-      const [st, sb, fm, md, hl, ch] = await Promise.allSettled([
-        api.stats(), api.seasonBoard(), api.farms(), api.models(), api.systemHealth(),
+      // The services check pings every outside API and is slow: it fills in its line on
+      // its own instead of holding the whole board back
+      api.systemHealth().then(setHealth).catch(() => {});
+      const [st, sb, fm, md, ch] = await Promise.allSettled([
+        api.stats(), api.seasonBoard(), api.farms(), api.models(),
         admin ? api.changesPreview() : Promise.resolve(null),
       ]);
       if (st.status === 'fulfilled') setStats(st.value);
       if (sb.status === 'fulfilled') setBoard(sb.value);
       if (fm.status === 'fulfilled') setFarms(fm.value);
       if (md.status === 'fulfilled') setModel((Array.isArray(md.value) ? md.value : []).find(m => m.is_active) ?? null);
-      if (hl.status === 'fulfilled') setHealth(hl.value);
       if (ch.status === 'fulfilled' && Array.isArray(ch.value)) setChanges(ch.value);
       setUpdated(new Date());
     } finally {
@@ -148,6 +150,11 @@ export default function Dashboard() {
   const topVarieties = (stats?.top_varieties ?? []).slice(0, 4);
   const maxPicks = Math.max(1, ...topVarieties.map(v => v.rec_count || 0));
   const pinned = farms.filter(f => f.latitude != null && f.longitude != null && f.is_active !== false);
+  const topBarangays = Object.entries(pinned.reduce((m, f) => {
+    const b = f.barangay || 'No barangay';
+    m[b] = (m[b] || 0) + 1;
+    return m;
+  }, {})).sort((a, b) => b[1] - a[1]).slice(0, 4);
 
   return (
     <div style={{ padding: '30px 36px 40px', display: 'flex', flexDirection: 'column', gap: 18, backgroundColor: C.background, minHeight: '100%' }}>
@@ -179,8 +186,25 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* A bento: the to-do list is the big tile, the map a tall one beside it */}
+      <style>{`
+        .bento { display: grid; gap: 18px; grid-template-columns: repeat(4, minmax(0, 1fr));
+          grid-template-areas:
+            "season season season season"
+            "stages stages stages stages"
+            "attn attn attn map"
+            "yield yield vars vars"
+            "activity activity ${admin ? 'changes changes' : 'activity activity'}"; }
+        @media (max-width: 1200px) {
+          .bento { grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-areas: "season season" "stages stages" "attn map" "yield vars"
+              "${admin ? 'activity changes' : 'activity activity'}"; }
+        }
+      `}</style>
+      <div className="bento">
+
       {/* ── The season and the numbers that size it ── */}
-      <div style={{ ...card, padding: '20px 24px', display: 'grid', gridTemplateColumns: '1.6fr repeat(4, 1fr)', gap: 24, alignItems: 'center' }}>
+      <div style={{ ...card, gridArea: 'season', padding: '20px 24px', display: 'grid', gridTemplateColumns: '1.6fr repeat(4, 1fr)', gap: 24, alignItems: 'center' }}>
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: C.textSecondary }}>
             <span>{season.kind === 'wet' ? 'May' : 'November'}</span>
@@ -199,7 +223,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Crops at each growth stage ── */}
-      <div style={{ ...card, padding: '20px 24px' }}>
+      <div style={{ ...card, gridArea: 'stages', padding: '20px 24px' }}>
         <CardHead title="Crops at each stage" sub="Each active crop, by its age or the guide steps the farmer logged" />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 8 }}>
           {stages.map((s, i) => {
@@ -222,8 +246,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Needs attention, and where ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: 18 }}>
-        <div style={{ ...card, padding: '20px 24px' }}>
+        <div style={{ ...card, gridArea: 'attn', padding: '20px 24px' }}>
           <CardHead title="Needs attention" sub="The agriculturist's list: worst first" />
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
             {ATTENTION.map(a => {
@@ -275,14 +298,14 @@ export default function Dashboard() {
         </div>
 
         {/* Where the farms are: green dots, red ones need attention */}
-        <Link to="/map" style={{ ...card, padding: '20px 24px', display: 'flex', flexDirection: 'column' }}>
+        <Link to="/map" style={{ ...card, gridArea: 'map', padding: '20px 24px', display: 'flex', flexDirection: 'column' }}>
           <CardHead
             title="Where"
             sub={`${pinned.length} farms pinned · red needs attention`}
             right={<ArrowUpRight size={18} color={C.textSecondary} />}
           />
-          <div style={{ position: 'relative', flex: 1, minHeight: 280, display: 'flex', justifyContent: 'center' }}>
-            <div style={{ position: 'relative', height: '100%', aspectRatio: `${MAP.w + 20} / ${MAP.h + 20}`, maxHeight: 360 }}>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <div style={{ position: 'relative', width: '100%', maxWidth: 300, aspectRatio: `${MAP.w + 20} / ${MAP.h + 20}` }}>
               <img src={panaboMap} alt="Panabo City" style={{ width: '100%', height: '100%', display: 'block' }} />
               {pinned.map(f => {
                 const p = toMap(Number(f.latitude), Number(f.longitude));
@@ -298,12 +321,22 @@ export default function Dashboard() {
               })}
             </div>
           </div>
+          {/* Where most farms are */}
+          <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {topBarangays.map(([name, n]) => (
+              <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 600, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+                <div style={{ width: 70, height: 6, borderRadius: 3, backgroundColor: C.background, overflow: 'hidden' }}>
+                  <div style={{ width: `${(n / topBarangays[0][1]) * 100}%`, height: '100%', backgroundColor: C.primary }} />
+                </div>
+                <span style={{ width: 18, textAlign: 'right', fontSize: 12, color: C.textSecondary }}>{n}</span>
+              </div>
+            ))}
+          </div>
         </Link>
-      </div>
 
       {/* ── Yield and what farmers plant ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 18 }}>
-        <div style={{ ...card, padding: '20px 24px' }}>
+        <div style={{ ...card, gridArea: 'yield', padding: '20px 24px' }}>
           <CardHead title="Yield" sub="Harvests farmers recorded, and the yield model" />
           {(stats?.yield_records ?? 0) === 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -311,7 +344,7 @@ export default function Dashboard() {
               <p style={{ fontSize: 13.5, color: C.textSecondary, fontWeight: 600 }}>No harvest recorded yet.</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(84px, 1fr))', gap: 14 }}>
               <Figure label="Average yield" value={Number(stats.avg_yield_t_ha).toFixed(1)} unit="t/ha" />
               <Figure label="Harvests" value={stats.yield_records} />
               <Figure label="Total harvest" value={Number(stats.total_harvest_t).toFixed(1)} unit="t" />
@@ -336,7 +369,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <Link to="/datasets" style={{ ...card, padding: '20px 24px', display: 'block' }}>
+        <Link to="/datasets" style={{ ...card, gridArea: 'vars', padding: '20px 24px', display: 'block' }}>
           <CardHead title="What the engine recommends" sub="Varieties in the most top-3 picks" right={<ArrowUpRight size={18} color={C.textSecondary} />} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {topVarieties.map((v, i) => (
@@ -356,11 +389,9 @@ export default function Dashboard() {
             {topVarieties.length === 0 && <p style={{ fontSize: 13, color: C.textSecondary }}>No recommendations yet.</p>}
           </div>
         </Link>
-      </div>
 
       {/* ── What happened ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: admin ? 'minmax(0, 1fr) minmax(0, 1fr)' : '1fr', gap: 18 }}>
-        <div style={{ ...card, padding: '20px 24px' }}>
+        <div style={{ ...card, gridArea: 'activity', padding: '20px 24px' }}>
           <CardHead title="Farmer activity" sub="Sign-ups, farm pins, recommendations and harvests" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {events.map((e, i) => {
@@ -382,7 +413,7 @@ export default function Dashboard() {
         </div>
 
         {admin && (
-          <div style={{ ...card, padding: '20px 24px' }}>
+          <div style={{ ...card, gridArea: 'changes', padding: '20px 24px' }}>
             <CardHead
               title="Staff changes"
               sub="What the admin and validator edited"
