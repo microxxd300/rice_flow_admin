@@ -71,13 +71,13 @@ function AppRoutes() {
 
   return (
     <div style={{
-      minHeight: '100vh', width: '100%', backgroundColor: '#E4E8E5',
+      minHeight: '100vh', width: '100%', backgroundColor: '#E4E6E4',
       display: 'flex', justifyContent: 'center', padding: 20, boxSizing: 'border-box',
     }}>
       <div style={{
         width: '100%', maxWidth: 1400, height: 'calc(100vh - 40px)',
-        backgroundColor: C.background, borderRadius: 26, overflow: 'hidden',
-        boxShadow: '0 12px 48px rgba(26,26,46,0.10), 0 2px 8px rgba(26,26,46,0.05)',
+        backgroundColor: C.background, borderRadius: 28, overflow: 'hidden',
+        boxShadow: '0 18px 50px rgba(17,24,39,0.10)',
         display: 'flex',
       }}>
         <Sidebar />

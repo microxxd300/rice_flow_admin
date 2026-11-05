@@ -104,7 +104,7 @@ function HeatLayer({ farms, mode = 'density' }) {
       maxZoom: 17,
       minOpacity: 0.45,
       gradient: {
-        0.2: '#3D9D5E',
+        0.2: '#10B981',
         0.4: '#F9A825',
         0.7: '#F5A623',
         1.0: '#E74C3C',
@@ -452,7 +452,7 @@ export default function FarmMap() {
                 <span style={{ fontSize: 10, color: '#9CA3AF' }}>low</span>
                 <div style={{
                   width: 90, height: 6, borderRadius: 4,
-                  background: 'linear-gradient(90deg, #3D9D5E, #F9A825, #F5A623, #E74C3C)',
+                  background: 'linear-gradient(90deg, #10B981, #F9A825, #F5A623, #E74C3C)',
                 }} />
                 <span style={{ fontSize: 10, color: '#9CA3AF' }}>high</span>
               </div>
