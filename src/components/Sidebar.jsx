@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Map, Tractor, Users, Database, Upload,
+  LayoutDashboard, Map, Tractor, Users, Database,
   SlidersHorizontal, LogOut, History,
 } from 'lucide-react';
 import logo from '../assets/brand/logo_full.png';
@@ -18,7 +18,6 @@ const MENU = [
   { to: '/users',    label: 'Users',             Icon: Users             },
   { to: '/datasets', label: 'Rice Varieties',    Icon: Database          },
   { to: '/rules',    label: 'Suitability Rules', Icon: SlidersHorizontal },
-  { to: '/import',   label: 'Import Varieties',  Icon: Upload            },
   { to: '/changes',  label: 'Change Log',        Icon: History           },
 ];
 

@@ -19,7 +19,6 @@ const load = {
   cycles:     () => import('./pages/FarmCycles'),
   users:      () => import('./pages/Users'),
   datasets:   () => import('./pages/Datasets'),
-  imports:    () => import('./pages/Import'),
   rules:      () => import('./pages/Rules'),
   changes:    () => import('./pages/ChangeLog'),
 };
@@ -29,7 +28,6 @@ const FarmMap    = lazy(load.map);
 const FarmCycles = lazy(load.cycles);
 const Users      = lazy(load.users);
 const Datasets   = lazy(load.datasets);
-const Import     = lazy(load.imports);
 const Rules      = lazy(load.rules);
 const ChangeLog  = lazy(load.changes);
 
@@ -90,7 +88,8 @@ function AppRoutes() {
               <Route path="/users"    element={<Guarded path="/users"><Users /></Guarded>} />
               <Route path="/datasets" element={<Guarded path="/datasets"><Datasets /></Guarded>} />
               <Route path="/rules"    element={<Guarded path="/rules"><Rules /></Guarded>} />
-              <Route path="/import"   element={<Guarded path="/import"><Import /></Guarded>} />
+              {/* Import is a panel on Rice Varieties now; old links land there */}
+              <Route path="/import"   element={<Navigate to="/datasets" replace />} />
               <Route path="/changes"  element={<Guarded path="/changes"><ChangeLog /></Guarded>} />
               <Route path="*"         element={<Navigate to="/" />} />
             </Routes>

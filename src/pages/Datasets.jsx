@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { C } from '../theme';
+import Import from './Import';
 import { api } from '../services/api';
 import { SkeletonStyles, SkelTableRow } from '../components/Skeleton';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin } from '../permissions';
 import {
-  Search, Pencil, Trash2, Plus, Database, Sprout, CheckCircle2,
-  ChevronLeft, ChevronRight, X, AlertTriangle, Leaf, Download,
+  Search, Pencil, Trash2, Plus, CheckCircle2,
+  ChevronLeft, ChevronRight, X, AlertTriangle, Leaf, Download, Upload,
 } from 'lucide-react';
 
 const PAGE_SIZE = 10;
@@ -133,23 +134,6 @@ function Dropdown({ value, onChange, options, placeholder, minWidth = 160 }) {
   );
 }
 
-function StatCard({ label, value, unit, badge, green, Icon }) {
-  return (
-    <div style={{ backgroundColor: C.surface, borderRadius: 12, boxShadow: shadow, border: `1px solid ${C.borderLight}`, padding: '20px 22px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-        <p style={{ fontSize: 12, fontWeight: 500, color: '#9CA3AF' }}>{label}</p>
-        <Icon size={14} color="#D1D5DB" />
-      </div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, marginBottom: 12 }}>
-        <p style={{ fontSize: 36, fontWeight: 800, lineHeight: 1, color: C.text }}>{value}</p>
-        {unit && <p style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 3 }}>{unit}</p>}
-      </div>
-      <span style={{ fontSize: 11, fontWeight: 600, backgroundColor: green ? C.successLight : C.surfaceAlt, color: green ? C.success : '#9CA3AF', borderRadius: 20, padding: '2px 9px' }}>
-        {badge}
-      </span>
-    </div>
-  );
-}
 
 /* -------------------------------------------------------------------------- */
 /*  Form input atoms (modal)                                                  */
@@ -531,6 +515,7 @@ export default function Datasets() {
   const [page,    setPage]      = useState(1);
 
   const [modalOpen, setModalOpen]   = useState(false);
+  const [importOpen, setImportOpen] = useState(false);   // the CSV import panel (admin)
   const [editing,   setEditing]     = useState(null);
   const [toDelete,  setToDelete]    = useState(null);
 
@@ -655,6 +640,19 @@ export default function Datasets() {
           </button>
           {canManage && (
             <button
+              onClick={() => setImportOpen(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                backgroundColor: C.surface, color: C.text,
+                border: 'none', borderRadius: 10, padding: '9px 16px',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+              <Upload size={14} />
+              Import CSV
+            </button>
+          )}
+          {canManage && (
+            <button
               onClick={() => { setEditing(null); setModalOpen(true); }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -669,12 +667,58 @@ export default function Datasets() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-        <StatCard label="Total Varieties" value={list.length} unit="varieties" badge={`${active} active`} green={true} Icon={Database} />
-        <StatCard label="Avg Yield"       value={avgYield}    unit="t/ha"     badge="across active varieties" green={true} Icon={Sprout} />
-        <StatCard label="Inactive"        value={inactive}    unit="varieties" badge={inactive > 0 ? `${inactive} hidden` : 'all active'} green={false} Icon={CheckCircle2} />
-      </div>
+      {/* The catalogue at a glance: by ecosystem, the standouts, and what is hidden */}
+      {(() => {
+        const live = list.filter(v => v.is_active);
+        const tile = { backgroundColor: C.surface, borderRadius: 24, padding: '18px 22px', boxShadow: '0 4px 14px rgba(0,0,0,0.05)' };
+        const byEco = ECOSYSTEMS.map(e => ({ ...e, n: live.filter(v => v.ecosystem === e.value).length }));
+        const maxEco = Math.max(1, ...byEco.map(e => e.n));
+        const best = [...live].sort((a, b) => (b.avg_yield_t_ha || 0) - (a.avg_yield_t_ha || 0))[0];
+        const earliest = [...live].sort((a, b) => (a.maturity_days || 999) - (b.maturity_days || 999))[0];
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1.6fr) minmax(0, 1fr)', gap: 16 }}>
+            <div style={tile}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: C.text }}>In use</p>
+              <p style={{ marginTop: 8 }}>
+                <span style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', color: C.text }}>{active}</span>
+                <span style={{ fontSize: 13, color: C.textSecondary, marginLeft: 6 }}>varieties · avg {avgYield} t/ha</span>
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 12 }}>
+                {byEco.map(e => (
+                  <div key={e.value} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 118, fontSize: 12.5, fontWeight: 600, color: C.text }}>{e.label}</span>
+                    <div style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: C.background, overflow: 'hidden' }}>
+                      <div style={{ width: `${(e.n / maxEco) * 100}%`, height: '100%', borderRadius: 4, backgroundColor: C.primary }} />
+                    </div>
+                    <span style={{ width: 18, textAlign: 'right', fontSize: 12, color: C.textSecondary }}>{e.n}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ ...tile, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {[
+                ['Highest yield', best, best && `${Number(best.avg_yield_t_ha).toFixed(1)} t/ha`],
+                ['Earliest harvest', earliest, earliest && `${earliest.maturity_days} days`],
+              ].map(([label, v, value]) => (
+                <div key={label} style={{ borderRadius: 18, backgroundColor: C.background, padding: '14px 16px' }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary }}>{label}</p>
+                  <p style={{ fontSize: 24, fontWeight: 800, color: C.text, marginTop: 6 }}>{value || '—'}</p>
+                  <p style={{ fontSize: 12.5, fontWeight: 600, color: C.text, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v?.common_name || ''}</p>
+                </div>
+              ))}
+            </div>
+            <div style={tile}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Hidden</p>
+              <p style={{ marginTop: 8 }}>
+                <span style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', color: C.text }}>{inactive}</span>
+              </p>
+              <p style={{ fontSize: 12.5, color: C.textSecondary, marginTop: 4 }}>
+                {inactive ? 'Turned off: never recommended to farmers.' : 'Every variety can be recommended.'}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Filter bar */}
       <div style={{ backgroundColor: C.surface, borderRadius: 12, boxShadow: shadow, border: `1px solid ${C.borderLight}`, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -844,6 +888,23 @@ export default function Datasets() {
         onCancel={() => setToDelete(null)}
         onConfirm={handleDelete}
       />
+      {/* Import CSV, as a panel over the list: the varieties stay in view and reload after */}
+      {importOpen && (
+        <div onClick={() => setImportOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: 'rgba(17,24,39,0.40)', display: 'flex', justifyContent: 'flex-end' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 'min(680px, 100%)', height: '100%', overflowY: 'auto', backgroundColor: C.background, padding: '26px 28px', boxShadow: '-12px 0 40px rgba(17,24,39,0.18)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
+              <div>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: C.text }}>Import varieties</h2>
+                <p style={{ fontSize: 13, color: C.textSecondary, marginTop: 4 }}>From a CSV file. Same NSIC code: updated. New code: added.</p>
+              </div>
+              <button onClick={() => setImportOpen(false)} aria-label="Close" style={{ width: 40, height: 40, borderRadius: 20, border: 'none', backgroundColor: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={18} color={C.text} />
+              </button>
+            </div>
+            <Import embedded onImported={load} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

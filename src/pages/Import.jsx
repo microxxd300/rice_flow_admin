@@ -33,7 +33,9 @@ const TIPS = [
 const isCsv = (file) =>
   file?.name?.toLowerCase().endsWith('.csv');
 
-export default function Import() {
+/** The CSV import. `embedded`: inside the Rice Varieties page's panel (no page header);
+    `onImported` runs after a good upload so the list refreshes. */
+export default function Import({ embedded = false, onImported } = {}) {
   const [file, setFile]       = useState(null);
   const [status, setStatus]   = useState('idle'); // idle | uploading | success | error
   const [error, setError]     = useState('');
@@ -89,6 +91,7 @@ export default function Import() {
       const res = await api.importVarietyCSV(file);
       setResult(res);
       setStatus('success');
+      onImported?.();
     } catch (err) {
       setStatus('error');
       setError(err?.message || 'Upload failed.');
@@ -108,10 +111,10 @@ export default function Import() {
   };
 
   return (
-    <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: C.background, minHeight: '100%' }}>
+    <div style={{ padding: embedded ? 0 : '28px 32px', display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: embedded ? 'transparent' : C.background, minHeight: embedded ? 0 : '100%' }}>
 
       {/* Header */}
-      <div>
+      <div style={{ display: embedded ? 'none' : 'block' }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Import Varieties</h1>
         <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
           Bulk-import rice varieties from a CSV file. Existing varieties are updated by NSIC code; new ones are added.
