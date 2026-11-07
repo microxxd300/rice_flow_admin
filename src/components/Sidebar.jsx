@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Map, Tractor, Users, Database, Upload,
-  SlidersHorizontal, Leaf, LogOut, Settings, HelpCircle,
+  LayoutDashboard, Map, Tractor, Users, Database,
+  SlidersHorizontal, LogOut, History,
 } from 'lucide-react';
+import logo from '../assets/brand/logo_full.png';
 import { C, radius } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { canAccess, ROLE, ROLE_LABEL } from '../permissions';
 
-/* Grouped nav, matching the MENU / GENERAL split in the design reference.
-   Items are filtered by role, so an agriculturist never sees Users, Import
-   or Suitability Rules. */
+/* The pages, filtered by role: a validator never sees Users, Import or the
+   Change Log (the server enforces the same split). */
 const MENU = [
   { to: '/',         label: 'Dashboard',         Icon: LayoutDashboard   },
   { to: '/map',      label: 'Farm Map',          Icon: Map               },
@@ -18,7 +18,7 @@ const MENU = [
   { to: '/users',    label: 'Users',             Icon: Users             },
   { to: '/datasets', label: 'Rice Varieties',    Icon: Database          },
   { to: '/rules',    label: 'Suitability Rules', Icon: SlidersHorizontal },
-  { to: '/import',   label: 'Import Varieties',  Icon: Upload            },
+  { to: '/changes',  label: 'Change Log',        Icon: History           },
 ];
 
 function SectionLabel({ children }) {
@@ -33,7 +33,7 @@ function SectionLabel({ children }) {
   );
 }
 
-/* Active = soft green chip plus a solid green bar on the panel's left edge. */
+/* The current page sits in a dark pill (the app's "picked" chip), its icon green. */
 function NavItem({ to, label, Icon }) {
   const [hover, setHover] = useState(false);
 
@@ -45,12 +45,6 @@ function NavItem({ to, label, Icon }) {
           onMouseLeave={() => setHover(false)}
           style={{ position: 'relative', padding: '0 10px' }}
         >
-          {isActive && (
-            <span style={{
-              position: 'absolute', left: 0, top: 5, bottom: 5, width: 4,
-              borderRadius: '0 4px 4px 0', backgroundColor: C.primary,
-            }} />
-          )}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 11,
             padding: '10px 12px', borderRadius: radius.md,
@@ -60,13 +54,13 @@ function NavItem({ to, label, Icon }) {
           }}>
             <Icon
               size={18}
-              color={isActive ? C.primary : C.textSecondary}
+              color={isActive ? '#34D399' : C.text}
               strokeWidth={isActive ? 2.4 : 2}
             />
             <span style={{
               fontSize: 13.5,
-              fontWeight: isActive ? 700 : 500,
-              color: isActive ? C.primary : C.textSecondary,
+              fontWeight: isActive ? 700 : 600,
+              color: isActive ? '#FFFFFF' : C.text,
               whiteSpace: 'nowrap',
             }}>
               {label}
@@ -108,6 +102,9 @@ function ActionItem({ label, Icon, onClick, danger }) {
 
 export default function Sidebar() {
   const { user, logout, role } = useAuth();
+  // The profile has first/last name, not a single name field
+  const displayName = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim()
+    || user?.username || ROLE_LABEL[role] || 'Admin';
   const visible = MENU.filter(item => canAccess(role, item.to));
 
   return (
@@ -121,18 +118,9 @@ export default function Sidebar() {
     }}>
 
       {/* Brand */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px' }}>
-        <div style={{
-          width: 34, height: 34, borderRadius: 11, flexShrink: 0,
-          backgroundColor: C.primaryLighter,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Leaf size={18} color={C.primary} strokeWidth={2.4} />
-        </div>
-        <div style={{ lineHeight: 1.15 }}>
-          <p style={{ fontSize: 14, fontWeight: 800, color: C.text }}>GeoRice</p>
-          <p style={{ fontSize: 11, fontWeight: 600, color: C.textTertiary }}>Advisor</p>
-        </div>
+      <div style={{ padding: '0 20px' }}>
+        <img src={logo} alt="RiceFlow" style={{ width: 96, height: 'auto', display: 'block' }} />
+        <p style={{ fontSize: 11, fontWeight: 700, color: C.textSecondary, marginTop: 4, letterSpacing: '0.04em' }}>ADMIN · PANABO CITY</p>
       </div>
 
       {/* Scrollable nav */}
@@ -142,11 +130,9 @@ export default function Sidebar() {
           {visible.map(item => <NavItem key={item.to} {...item} />)}
         </nav>
 
-        <SectionLabel>General</SectionLabel>
+        <SectionLabel>Account</SectionLabel>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <ActionItem label="Settings" Icon={Settings}   onClick={() => {}} />
-          <ActionItem label="Help"     Icon={HelpCircle} onClick={() => {}} />
-          <ActionItem label="Logout"   Icon={LogOut}     onClick={logout} danger />
+          <ActionItem label="Log out" Icon={LogOut} onClick={logout} danger />
         </nav>
       </div>
 
@@ -159,11 +145,11 @@ export default function Sidebar() {
         }}>
           <div style={{
             width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-            backgroundColor: C.primary,
+            backgroundColor: C.ink,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>
-              {(user.name || 'A').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+              {displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
             </span>
           </div>
           <div style={{ minWidth: 0 }}>
@@ -171,15 +157,17 @@ export default function Sidebar() {
               fontSize: 12, fontWeight: 700, color: C.text,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
-              {user.name || 'Admin'}
+              {displayName}
             </p>
-            <p style={{
-              fontSize: 10, fontWeight: 700, marginTop: 1,
-              color: role === ROLE.ADMIN ? C.primary : C.textTertiary,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            {/* The role, so the validator always knows what they can change */}
+            <span style={{
+              display: 'inline-block', marginTop: 3, padding: '2px 8px', borderRadius: 8,
+              fontSize: 10, fontWeight: 700,
+              color: role === ROLE.ADMIN ? '#FFFFFF' : '#047857',
+              backgroundColor: role === ROLE.ADMIN ? C.ink : C.primaryLighter,
             }}>
               {ROLE_LABEL[role] || ''}
-            </p>
+            </span>
           </div>
         </div>
       )}

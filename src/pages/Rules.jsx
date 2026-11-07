@@ -1,6 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, createContext, useContext } from 'react';
 import { C } from '../theme';
+import { factorPic } from '../assets/pictures';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { isAdmin } from '../permissions';
 import Skeleton, { SkeletonStyles } from '../components/Skeleton';
 import {
   Search, SlidersHorizontal, Save, RotateCcw,
@@ -118,7 +121,7 @@ const DEFAULT_RULES = [
   {
     key: 'stress_tolerance', label: 'Stress Tolerance', group: 'Variety', unit: 'derived', weight: 0.10,
     type: 'derived',
-    description: 'Combines flood, drought, and salinity risk with the variety\'s tolerance profile. Cannot be edited directly — modify variety tolerances on the Datasets page instead.',
+    description: 'How well the variety fits this farm type and the season it is planted in. A variety for another farm type scores S3, one for the other season at most S2. Wet season (May–Oct) on lowland farms raises flood risk, so submergence-tolerant varieties rank first; dry season (Nov–Apr) on rainfed and upland farms raises drought risk, so drought-tolerant ones rank first. Cannot be edited directly — modify variety tolerances and seasons on the Datasets page instead.',
   },
 ];
 
@@ -134,13 +137,19 @@ const CLASS_META = {
 /*  Atoms                                                                     */
 /* -------------------------------------------------------------------------- */
 
+/* True for the validator: the rules are shown for checking, but only the admin
+   may change the validated RSI model (the backend refuses the save too). */
+const ReadOnly = createContext(false);
+
 function NumberInput({ value, onChange, step = 0.1, width = 76 }) {
   const [focus, setFocus] = useState(false);
+  const readOnly = useContext(ReadOnly);
   return (
     <input
       type="number"
       value={value}
       step={step}
+      readOnly={readOnly}
       onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
       onFocus={() => setFocus(true)}
       onBlur={() => setFocus(false)}
@@ -203,6 +212,11 @@ function CardShell({ rule, weight, onWeight, locked, children }) {
     <div style={{ ...baseCard, padding: 22 }}>
       {/* Title row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, gap: 14 }}>
+        {factorPic(rule.key) && (
+          <div style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: C.background, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <img src={factorPic(rule.key)} alt="" style={{ width: 36, height: 36, objectFit: 'contain' }} />
+          </div>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{rule.label}</p>
           <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 3 }}>
@@ -476,6 +490,8 @@ function Dropdown({ value, onChange, options, placeholder }) {
 /* -------------------------------------------------------------------------- */
 
 export default function Rules() {
+  const { role } = useAuth();
+  const readOnly = !isAdmin(role);
   const [rules, setRules]         = useState(DEFAULT_RULES);
   const [search, setSearch]       = useState('');
   const [groupFilter, setGroup]   = useState('');
@@ -599,7 +615,7 @@ export default function Rules() {
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text }}>Suitability Rules</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.6px', color: C.text }}>Suitability Rules</h1>
           <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
             FAO suitability ranges and Weighted Linear Combination weights used by the rule-based RSI engine.
           </p>
@@ -612,6 +628,16 @@ export default function Rules() {
             <Zap size={12} color={C.primary} />
             <span>Effective immediately for new scans</span>
           </div>
+          {readOnly ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              backgroundColor: C.surfaceAlt, color: C.textSecondary,
+              borderRadius: 10, padding: '9px 14px', fontSize: 13, fontWeight: 600,
+            }}>
+              <Lock size={14} />
+              View only · changes are made by the admin
+            </div>
+          ) : (<>
           <button onClick={handleReset}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
@@ -626,7 +652,7 @@ export default function Rules() {
           <button onClick={handleSave} disabled={saving || loading}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              backgroundColor: (saving || loading) ? C.surfaceAlt : C.primary,
+              backgroundColor: (saving || loading) ? C.surfaceAlt : C.ink,
               color: (saving || loading) ? '#9CA3AF' : '#fff',
               border: 'none', borderRadius: 10,
               padding: '9px 16px', fontSize: 13, fontWeight: 600,
@@ -635,6 +661,7 @@ export default function Rules() {
             <Save size={14} />
             {saving ? 'Saving…' : 'Save Changes'}
           </button>
+          </>)}
         </div>
       </div>
 
@@ -688,6 +715,48 @@ export default function Rules() {
         )}
       </div>
 
+
+
+      {/* ── What decides the score: the 12 weights as one bar ── */}
+      {(() => {
+        const GROUP_TONE = { Soil: '#B45309', Climate: '#2563EB', Topography: '#059669', Variety: '#111827' };
+        const sorted = [...rules].sort((a, b) => (parseFloat(b.weight) || 0) - (parseFloat(a.weight) || 0));
+        const total = totalWeight || 1;
+        return (
+          <div style={{ backgroundColor: C.surface, borderRadius: 24, padding: '20px 24px', boxShadow: '0 4px 14px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <p style={{ fontSize: 15, fontWeight: 700, color: C.text }}>What decides a farm's score</p>
+                <p style={{ fontSize: 12.5, color: C.textSecondary, marginTop: 3 }}>The weights of the 12 factors, adding up to 1.00. The longer the piece, the more it counts.</p>
+              </div>
+              {readOnly && (
+                <span style={{ fontSize: 11.5, fontWeight: 700, padding: '5px 10px', borderRadius: 10, backgroundColor: C.background, color: C.text, whiteSpace: 'nowrap' }}>View only · the admin edits rules</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', height: 26, borderRadius: 13, overflow: 'hidden', marginTop: 16, gap: 2 }}>
+              {sorted.map(r => (
+                <div key={r.key} title={`${r.label}: ${(parseFloat(r.weight) || 0).toFixed(2)}`} style={{
+                  width: `${((parseFloat(r.weight) || 0) / total) * 100}%`, backgroundColor: GROUP_TONE[r.group] || C.ink,
+                  opacity: 0.55 + 0.45 * ((parseFloat(r.weight) || 0) / (parseFloat(sorted[0]?.weight) || 1)),
+                }} />
+              ))}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px', marginTop: 14 }}>
+              {GROUPS.map(g => (
+                <span key={g} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: C.text }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: GROUP_TONE[g] }} />
+                  {g} {rules.filter(r => r.group === g).reduce((n, r) => n + (parseFloat(r.weight) || 0), 0).toFixed(2)}
+                </span>
+              ))}
+              <span style={{ flex: 1 }} />
+              <span style={{ fontSize: 12.5, color: C.textSecondary }}>
+                Biggest: {sorted.slice(0, 3).map(r => `${r.label} ${(parseFloat(r.weight) || 0).toFixed(2)}`).join(' · ')}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Filter bar ────────────────────────────────────────────────── */}
       <div style={{
         backgroundColor: C.surface, borderRadius: 12,
@@ -734,12 +803,14 @@ export default function Rules() {
             </div>
 
             {/* Cards grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16 }}>
-              {inGroup.map(rule => (
-                <RuleCard key={rule.key} rule={rule}
-                  onChange={(updated) => handleChange(rule.key, updated)} />
-              ))}
-            </div>
+            <ReadOnly.Provider value={readOnly}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16 }}>
+                {inGroup.map(rule => (
+                  <RuleCard key={rule.key} rule={rule}
+                    onChange={(updated) => handleChange(rule.key, updated)} />
+                ))}
+              </div>
+            </ReadOnly.Provider>
           </section>
         );
       })}

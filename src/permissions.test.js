@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { ROLE, allowedRoutes, canAccess, roleOf } from './permissions';
+import { ROLE, allowedRoutes, canAccess, isAdmin, roleOf } from './permissions';
 
 describe('roleOf', () => {
-  it('maps superusers to admin and staff to agriculturist', () => {
+  it('maps superusers to admin and staff to validator', () => {
     expect(roleOf({ is_superuser: true, is_staff: true })).toBe(ROLE.ADMIN);
-    expect(roleOf({ is_superuser: false, is_staff: true })).toBe(ROLE.AGRICULTURIST);
+    expect(roleOf({ is_superuser: false, is_staff: true })).toBe(ROLE.VALIDATOR);
   });
 
   it('returns null without a user', () => {
@@ -18,11 +18,27 @@ describe('canAccess', () => {
     expect(canAccess(ROLE.ADMIN, '/import')).toBe(true);
   });
 
-  it('keeps agriculturists out of users, rules, and import', () => {
-    for (const path of ['/users', '/rules', '/import']) {
-      expect(canAccess(ROLE.AGRICULTURIST, path)).toBe(false);
+  it('keeps validators out of users, import and the change log', () => {
+    expect(canAccess(ROLE.ADMIN, '/changes')).toBe(true);
+    for (const path of ['/users', '/import', '/changes']) {
+      expect(canAccess(ROLE.VALIDATOR, path)).toBe(false);
     }
-    expect(canAccess(ROLE.AGRICULTURIST, '/farms')).toBe(true);
+  });
+
+  it('lets validators view the agronomic pages, rules included', () => {
+    for (const path of ['/', '/map', '/farms', '/datasets', '/rules']) {
+      expect(canAccess(ROLE.VALIDATOR, path)).toBe(true);
+    }
+  });
+
+  it('has no AI knowledge page any more', () => {
+    expect(canAccess(ROLE.ADMIN, '/knowledge')).toBe(false);
+  });
+
+  it('only the admin gets admin-only actions', () => {
+    expect(isAdmin(ROLE.ADMIN)).toBe(true);
+    expect(isAdmin(ROLE.VALIDATOR)).toBe(false);
+    expect(isAdmin(undefined)).toBe(false);
   });
 
   it('denies unknown roles everything', () => {
