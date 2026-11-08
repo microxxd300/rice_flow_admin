@@ -14,23 +14,19 @@ import stress_tolerance from './factors/stress_tolerance.png';
 import irrigated_lowland from './ecosystems/irrigated_lowland.png';
 import rainfed_lowland from './ecosystems/rainfed_lowland.png';
 import upland from './ecosystems/upland.png';
-import no_results from './empty/no_results.png';
-import no_cycles from './empty/no_cycles.png';
-import no_changes from './empty/no_changes.png';
 import import_done from './empty/import_done.png';
 import import_failed from './empty/import_failed.png';
-import all_on_track from './empty/all_on_track.png';
 
 const FACTORS = {
   soil_ph, soil_texture, organic_matter, drainage, avg_temperature, seasonal_rainfall,
   humidity, solar_radiation, temp_at_flowering, elevation, slope, stress_tolerance,
 };
 const ECOSYSTEMS = { irrigated_lowland, rainfed_lowland, upland };
-const EMPTY = { no_results, no_cycles, no_changes, import_done, import_failed, all_on_track };
+const EMPTY = { import_done, import_failed };
 
 /** A Suitability Rules factor (its key) → its icon, or null. */
 export const factorPic = key => FACTORS[key] ?? null;
 /** An ecosystem value (irrigated_lowland, rainfed_lowland, upland) → its picture, or null. */
 export const ecosystemPic = value => ECOSYSTEMS[String(value || '').toLowerCase().replace(/ /g, '_')] ?? null;
-/** An empty or done state → its picture (no_results when unknown). */
-export const emptyPic = name => EMPTY[name] ?? EMPTY.no_results;
+/** An import result (import_done, import_failed) → its picture, or null. */
+export const emptyPic = name => EMPTY[name] ?? null;
