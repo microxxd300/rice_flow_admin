@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { C } from '../theme';
-import { ecosystemPic, emptyPic } from '../assets/pictures';
+import { ecosystemPic } from '../assets/pictures';
 import Import from './Import';
 import { api } from '../services/api';
 import { SkeletonStyles, SkelTableRow } from '../components/Skeleton';
@@ -856,7 +856,7 @@ export default function Datasets() {
             {loading && Array.from({ length: 5 }).map((_, i) => <SkelTableRow key={`sk-${i}`} cells={7} />)}
             {!loading && paginated.length === 0 && (
               <tr><td colSpan={7}>
-                <div style={{ padding: '48px 20px', textAlign: 'center' }}><img src={emptyPic('no_results')} alt="" style={{ width: 120, height: 120, objectFit: 'contain' }} /><p style={{ fontSize: 13.5, fontWeight: 600, color: C.textSecondary, marginTop: 6 }}>{filtered.length === 0 ? 'No varieties match your search.' : 'No varieties on this page.'}</p></div>
+                <div style={{ padding: '48px 20px', textAlign: 'center' }}><p style={{ fontSize: 13.5, fontWeight: 600, color: C.textSecondary, marginTop: 6 }}>{filtered.length === 0 ? 'No varieties match your search.' : 'No varieties on this page.'}</p></div>
               </td></tr>
             )}
           </tbody>

@@ -5,7 +5,7 @@ import {
   ArrowUpRight, Activity,
 } from 'lucide-react';
 import { C, cardShadow } from '../theme';
-import { emptyPic, ecosystemPic } from '../assets/pictures';
+import { ecosystemPic } from '../assets/pictures';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin } from '../permissions';
@@ -14,7 +14,6 @@ import { seasonProgress } from '../season';
 import ChangeList from '../components/ChangeList';
 import Skeleton, { SkeletonStyles } from '../components/Skeleton';
 import panaboMap from '../assets/brand/panabo_map.svg';
-import noHarvest from '../assets/empty/no_harvest.png';
 import s01 from '../assets/growth/stage_01.png';
 import s02 from '../assets/growth/stage_02.png';
 import s03 from '../assets/growth/stage_03.png';
@@ -267,7 +266,6 @@ export default function Dashboard() {
 
           {rows.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '22px 0' }}>
-              <img src={emptyPic('all_on_track')} alt="" style={{ width: 110, height: 110, objectFit: 'contain' }} />
               <p style={{ fontSize: 13.5, fontWeight: 600, color: C.textSecondary, marginTop: 6 }}>Nothing here. Every farm is on track.</p>
             </div>
           ) : (
@@ -340,7 +338,6 @@ export default function Dashboard() {
           <CardHead title="Yield" sub="Harvests farmers recorded, and the yield model" />
           {(stats?.yield_records ?? 0) === 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <img src={noHarvest} alt="" style={{ width: 84, height: 84, objectFit: 'contain' }} />
               <p style={{ fontSize: 13.5, color: C.textSecondary, fontWeight: 600 }}>No harvest recorded yet.</p>
             </div>
           ) : (
