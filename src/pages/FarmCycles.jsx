@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import Skeleton, { SkeletonStyles, SkelStatCard } from '../components/Skeleton';
 import { normalizeStage } from '../stageGroups';
+import { useLiveRefresh } from '../liveRefresh';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin } from '../permissions';
 import picLandPrep from '../assets/growth/stage_01.png';
@@ -216,14 +217,9 @@ export default function FarmCycles() {
   };
 
   // Cycles follow the farmers' planting guides (a logged step moves the stage, a sowing
-  // answer moves the dates), so the table reloads every minute and when the tab is shown again
-  useEffect(() => {
-    load();
-    const timer = setInterval(() => load(true), 60_000);
-    const onShow = () => { if (document.visibilityState === 'visible') load(true); };
-    document.addEventListener('visibilitychange', onShow);
-    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', onShow); };
-  }, []);
+  // answer moves the dates), so the table keeps itself up to date
+  useEffect(() => { load(); }, []);
+  useLiveRefresh(() => load(true));
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this farm cycle? This cannot be undone.')) return;
