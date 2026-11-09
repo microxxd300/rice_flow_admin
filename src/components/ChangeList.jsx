@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { emptyPic } from '../assets/pictures';
 import { C } from '../theme';
 import { timeAgo } from '../timeAgo';
 
@@ -86,7 +85,7 @@ function ChangeRow({ row, last, expandable }) {
 export default function ChangeList({ rows, expandable = true, empty = 'No changes recorded yet.' }) {
   if (!rows.length) {
     return (
-<div style={{ padding: '32px 24px', textAlign: 'center' }}><img src={emptyPic('no_changes')} alt="" style={{ width: 120, height: 120, objectFit: 'contain' }} /><p style={{ fontSize: 13.5, fontWeight: 600, color: C.textSecondary, marginTop: 6 }}>{empty}</p></div>
+<div style={{ padding: '32px 24px', textAlign: 'center' }}><p style={{ fontSize: 13.5, fontWeight: 600, color: C.textSecondary, marginTop: 6 }}>{empty}</p></div>
     );
   }
   return rows.map((r, i) => (

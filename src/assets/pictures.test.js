@@ -14,7 +14,9 @@ describe('pictures', () => {
     expect(ecosystemPic('upland')).toBeTruthy();
     expect(ecosystemPic('')).toBeNull();
   });
-  it('falls back to no results for an unknown empty state', () => {
-    expect(emptyPic('x')).toBe(emptyPic('no_results'));
+  it('has a picture for each import result and none for anything else', () => {
+    expect(emptyPic('import_done')).toBeTruthy();
+    expect(emptyPic('import_failed')).toBeTruthy();
+    expect(emptyPic('x')).toBeNull();
   });
 });
