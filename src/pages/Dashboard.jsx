@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLiveRefresh } from '../liveRefresh';
 import { Link } from 'react-router-dom';
 import {
   RefreshCw, AlertTriangle, Bug, MapPinOff, Wheat, Clock, UserPlus, MapPin, Sparkles,
@@ -97,20 +98,21 @@ export default function Dashboard() {
   const [updated, setUpdated] = useState(null);
   const season = seasonProgress();
 
-  const loadAll = async ({ silent = false } = {}) => {
+  // live: the regular refresh, which skips the slow checks that rarely change
+  const loadAll = async ({ silent = false, live = false } = {}) => {
     if (!silent) { setRefreshing(true); api.invalidate(); }
     try {
       // The services check pings every outside API and is slow: it fills in its line on
       // its own instead of holding the whole board back
-      api.systemHealth().then(setHealth).catch(() => {});
+      if (!live) api.systemHealth().then(setHealth).catch(() => {});
       const [st, sb, fm, md, ch] = await Promise.allSettled([
-        api.stats(), api.seasonBoard(), api.farms(), api.models(),
+        api.stats(), api.seasonBoard(), api.farms(), live ? Promise.resolve(null) : api.models(),
         admin ? api.changesPreview() : Promise.resolve(null),
       ]);
       if (st.status === 'fulfilled') setStats(st.value);
       if (sb.status === 'fulfilled') setBoard(sb.value);
       if (fm.status === 'fulfilled') setFarms(fm.value);
-      if (md.status === 'fulfilled') setModel((Array.isArray(md.value) ? md.value : []).find(m => m.is_active) ?? null);
+      if (!live && md.status === 'fulfilled') setModel((Array.isArray(md.value) ? md.value : []).find(m => m.is_active) ?? null);
       if (ch.status === 'fulfilled' && Array.isArray(ch.value)) setChanges(ch.value);
       setUpdated(new Date());
     } finally {
@@ -120,6 +122,7 @@ export default function Dashboard() {
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on open; the role is fixed for the session
   useEffect(() => { loadAll({ silent: true }); }, []);
+  useLiveRefresh(() => loadAll({ silent: true, live: true }));
 
   if (loading) {
     return (
