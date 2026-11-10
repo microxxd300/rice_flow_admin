@@ -9,6 +9,11 @@ const STAGE_GROUP_BY_NO = {
   8: 'Harvesting', 9: 'Harvesting', 10: 'Harvesting',    // ripening, harvesting, post-harvest
 };
 
+// A crop's column, or '' for one not sown yet: it has no stage, so no column counts it
+export function cycleStage(rawName, stageNo) {
+  return !rawName && !stageNo ? '' : normalizeStage(rawName, stageNo);
+}
+
 export function normalizeStage(rawName, stageNo) {
   if (STAGE_GROUP_BY_NO[stageNo]) return STAGE_GROUP_BY_NO[stageNo];
   const s = (rawName || '').toLowerCase();

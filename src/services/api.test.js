@@ -37,6 +37,14 @@ describe('api client', () => {
     expect(api.isWarm('auth/admin-stats/')).toBe(true);
   });
 
+  it('explains a server crash that answers with an HTML page', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      status: 500, ok: false, json: async () => { throw new SyntaxError('Unexpected token <'); },
+    })));
+
+    await expect(api.stats()).rejects.toThrow('The server had a problem. Please try again.');
+  });
+
   it('clears cached reads after a write', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ ok: true })));
 

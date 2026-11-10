@@ -138,7 +138,8 @@ async function uploadFile(method, path, file, fieldName = 'file') {
 async function handleResponse(res) {
 
   if (res.status === 204) return null;
-  const data = await res.json();
+  // A crashed server answers with an HTML page, which is not JSON
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     // DRF validation errors arrive as a dict of arrays-of-strings.
     // Collect every string in the response so the caller can show
@@ -150,7 +151,7 @@ async function handleResponse(res) {
       .filter(v => typeof v === 'string');
     const msg = collected.length
       ? Array.from(new Set(collected)).join(' · ')
-      : 'Request failed';
+      : (res.status >= 500 ? 'The server had a problem. Please try again.' : 'Request failed');
     const err = new Error(msg);
     err.payload = data;
     throw err;

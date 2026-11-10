@@ -14,7 +14,7 @@ const PAGE_SIZE = 10;
 
 const shadow = '0 1px 6px rgba(26,26,46,0.06), 0 0 1px rgba(26,26,46,0.04)';
 const card   = { backgroundColor: C.surface, borderRadius: 12, boxShadow: shadow, border: `1px solid ${C.borderLight}`, overflow: 'hidden' };
-const th     = { padding: '10px 20px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${C.borderLight}`, backgroundColor: C.surfaceAlt };
+const th     = { padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${C.borderLight}`, backgroundColor: C.surfaceAlt };
 
 const AVATAR_COLORS = ['#5B8FF9', '#5AD8A6', '#F6BD16', '#E86452', '#6DC8EC', '#945FB9'];
 
@@ -471,7 +471,7 @@ function DetailRow({ Icon, label, value, mono }) {
           wordBreak: 'break-word',
           fontFamily: mono ? "ui-monospace, SFMono-Regular, Menlo, monospace" : 'inherit',
         }}>
-          {value || <span style={{ color: '#9CA3AF', fontWeight: 400 }}>—</span>}
+          {value || value === 0 ? value : <span style={{ color: '#9CA3AF', fontWeight: 400 }}>—</span>}
         </p>
       </div>
     </div>
@@ -519,9 +519,9 @@ function UserDetailsModal({ user, resolvedAddress, onClose }) {
               <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 20, backgroundColor: roleStyle.bg, color: roleStyle.color }}>
                 {roleLabel}
               </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: user.is_active ? C.success : '#9CA3AF', fontWeight: 600 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: user.is_active ? C.success : '#D1D5DB' }} />
-                {user.is_active ? 'Active' : 'Inactive'}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: user.status === 'Active' ? C.success : '#9CA3AF', fontWeight: 600 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: user.status === 'Active' ? C.success : '#D1D5DB' }} />
+                {user.status}
               </span>
             </div>
           </div>
@@ -542,8 +542,8 @@ function UserDetailsModal({ user, resolvedAddress, onClose }) {
           </p>
           <DetailRow Icon={Hash}   label="User ID"     value={user.id}        mono />
           <DetailRow Icon={AtSign} label="Username"    value={user.username}  mono />
-          <DetailRow Icon={UsersIcon} label="First Name"  value={user.first_name} />
-          <DetailRow Icon={UsersIcon} label="Last Name"   value={user.last_name} />
+          <DetailRow Icon={UsersIcon} label="First Name"  value={user.firstName} />
+          <DetailRow Icon={UsersIcon} label="Last Name"   value={user.lastName} />
 
           {/* Section: Contact */}
           <p style={{ fontSize: 10, fontWeight: 700, color: C.textSecondary, letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 22, marginBottom: 4 }}>
@@ -597,8 +597,8 @@ function UserDetailsModal({ user, resolvedAddress, onClose }) {
           <p style={{ fontSize: 10, fontWeight: 700, color: C.textSecondary, letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 22, marginBottom: 4 }}>
             Activity
           </p>
-          <DetailRow Icon={Calendar} label="Date Joined" value={formatDateTime(user.date_joined)} />
-          <DetailRow Icon={Clock}    label="Last Login"  value={formatDateTime(user.last_login)} />
+          <DetailRow Icon={Calendar} label="Date Joined" value={formatDateTime(user.dateJoined)} />
+          <DetailRow Icon={Clock}    label="Last Login"  value={formatDateTime(user.lastLogin)} />
         </div>
 
         {/* Footer */}
@@ -657,7 +657,7 @@ export default function Users() {
   const [statusFilter, setStatus] = useState('');
   const [roleFilter, setRole] = useState('');
   const [users, setUsers]     = useState([]);
-  const [page, setPage]       = useState(1);
+  const [pageAsked, setPage]  = useState(1);
   const [loading, setLoading] = useState(true);
   const [details, setDetails] = useState(null);
   const [error, setError]     = useState('');
@@ -721,8 +721,9 @@ export default function Users() {
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Deleting or filtering can leave fewer pages than the one asked for
+  const page = Math.min(pageAsked, totalPages);
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const inactive   = users.filter(u => u.status === 'Inactive').length;
 
 
   const handleSaved = (saved, wasEditing) => {
@@ -789,6 +790,7 @@ export default function Users() {
         const staff = users.filter(u => u.isStaff).sort((x, y) => Number(y.isSuperuser) - Number(x.isSuperuser));
         const newThisWeek = farmers.filter(u => u.dateJoined && new Date(u.dateJoined).getTime() >= weekAgo).length;
         const withFarm = farmers.filter(u => u.farmCount > 0).length;
+        const inactive = farmers.filter(u => u.status === 'Inactive').length;
         const byBrgy = Object.entries(farmers.reduce((m, u) => {
           const b = u.gpsBarangay || u.barangay;
           if (b) m[b] = (m[b] || 0) + 1;
@@ -800,11 +802,11 @@ export default function Users() {
             <div style={tile}>
               <p style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Farmers</p>
               <p style={{ marginTop: 8 }}>
-                <span style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', color: C.text }}>{farmers.length}</span>
+                <span style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', color: C.text }}>{loading ? '—' : farmers.length}</span>
               </p>
               <p style={{ fontSize: 12.5, color: C.textSecondary, marginTop: 4 }}>
-                {withFarm} with a farm pinned{newThisWeek > 0 ? ` · +${newThisWeek} this week` : ''}
-                {inactive > 0 ? ` · ${inactive} turned off` : ''}
+                {!loading && <>{withFarm} with a farm pinned{newThisWeek > 0 ? ` · +${newThisWeek} this week` : ''}
+                {inactive > 0 ? ` · ${inactive} turned off` : ''}</>}
               </p>
             </div>
             <div style={tile}>
@@ -817,7 +819,6 @@ export default function Users() {
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: 13, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.name || u.username}</p>
-                      {/* (last_login is not kept: the JWT sign-in does not update it) */}
                       <p style={{ fontSize: 11.5, color: C.textSecondary }}>{u.isSuperuser ? 'Full access' : 'Checks farms, fixes varieties'}</p>
                     </div>
                     <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 8, backgroundColor: u.isSuperuser ? C.ink : C.primaryLighter, color: u.isSuperuser ? '#fff' : '#047857' }}>
@@ -825,7 +826,7 @@ export default function Users() {
                     </span>
                   </div>
                 ))}
-                {staff.length === 0 && <p style={{ fontSize: 12.5, color: C.textSecondary }}>No staff accounts.</p>}
+                {!loading && staff.length === 0 && <p style={{ fontSize: 12.5, color: C.textSecondary }}>No staff accounts.</p>}
               </div>
             </div>
             <div style={tile}>
@@ -840,7 +841,7 @@ export default function Users() {
                     <span style={{ width: 22, textAlign: 'right', fontSize: 12, color: C.textSecondary }}>{n}</span>
                   </div>
                 ))}
-                {byBrgy.length === 0 && <p style={{ fontSize: 12.5, color: C.textSecondary }}>No barangays yet.</p>}
+                {!loading && byBrgy.length === 0 && <p style={{ fontSize: 12.5, color: C.textSecondary }}>No barangays yet.</p>}
               </div>
             </div>
           </div>
@@ -907,6 +908,7 @@ export default function Users() {
           </span>
         </div>
 
+        <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr>
@@ -933,14 +935,14 @@ export default function Users() {
               return (
                 <tr key={u.id} style={{ borderBottom: `1px solid ${C.borderLight}` }}>
                   {/* User: avatar + name + username */}
-                  <td style={{ padding: '13px 20px' }}>
+                  <td style={{ padding: '13px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: col + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: col }}>{init}</span>
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <p style={{ fontWeight: 600, color: C.text }}>{u.name || u.username}</p>
-                        <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+                        <p title={u.username} style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           @{u.username}
                         </p>
                       </div>
@@ -948,10 +950,10 @@ export default function Users() {
                   </td>
 
                   {/* Contact: email + phone */}
-                  <td style={{ padding: '13px 20px' }}>
+                  <td style={{ padding: '13px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.text }}>
                       <Mail size={11} color="#9CA3AF" />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</span>
+                      <span title={u.email} style={{ display: 'block', maxWidth: 170, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</span>
                     </div>
                     {u.phone && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#9CA3AF', marginTop: 3 }}>
@@ -962,7 +964,7 @@ export default function Users() {
                   </td>
 
                   {/* Location — pin-resolved address from Nominatim only */}
-                  <td style={{ padding: '13px 20px' }}>
+                  <td style={{ padding: '13px 12px' }}>
                     {u.hasGps
                       ? (() => {
                           const r = resolved[u.id];
@@ -1008,7 +1010,7 @@ export default function Users() {
                   </td>
 
                   {/* Role */}
-                  <td style={{ padding: '13px 20px' }}>
+                  <td style={{ padding: '13px 12px' }}>
                     <span style={{
                       fontSize: 11, fontWeight: 600,
                       padding: '3px 10px', borderRadius: 20,
@@ -1019,17 +1021,17 @@ export default function Users() {
                   </td>
 
                   {/* Farms */}
-                  <td style={{ padding: '13px 20px', textAlign: 'right', color: C.text, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                  <td style={{ padding: '13px 12px', textAlign: 'right', color: C.text, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                     {u.farmCount}
                   </td>
 
                   {/* Joined */}
-                  <td style={{ padding: '13px 20px', color: '#9CA3AF', fontSize: 12 }}>
+                  <td style={{ padding: '13px 12px', color: '#9CA3AF', fontSize: 12 }}>
                     {formatDate(u.dateJoined)}
                   </td>
 
                   {/* Status */}
-                  <td style={{ padding: '13px 20px', textAlign: 'center' }}>
+                  <td style={{ padding: '13px 12px', textAlign: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                       <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: isActive ? C.success : '#D1D5DB' }} />
                       <span style={{ fontSize: 12, fontWeight: 500, color: isActive ? C.success : '#9CA3AF' }}>{u.status}</span>
@@ -1037,7 +1039,7 @@ export default function Users() {
                   </td>
 
                   {/* Actions */}
-                  <td style={{ padding: '13px 20px', textAlign: 'center' }}>
+                  <td style={{ padding: '13px 12px', textAlign: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
                       <button onClick={() => setDetails(u)} title="View details"
                         style={{ width: 28, height: 28, borderRadius: 7, border: 'none', cursor: 'pointer', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1067,12 +1069,13 @@ export default function Users() {
             )}
           </tbody>
         </table>
+        </div>
 
         {totalPages > 1 && (
           <div style={{ padding: '14px 20px', borderTop: `1px solid ${C.borderLight}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <p style={{ fontSize: 12, color: '#9CA3AF' }}>Page {page} of {totalPages}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.borderLight}`, backgroundColor: page === 1 ? C.surfaceAlt : C.surface, cursor: page === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.borderLight}`, backgroundColor: page === 1 ? C.surfaceAlt : C.surface, cursor: page === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ChevronLeft size={15} color={page === 1 ? '#D1D5DB' : '#6B7280'} />
               </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
@@ -1080,7 +1083,7 @@ export default function Users() {
                   {p}
                 </button>
               ))}
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.borderLight}`, backgroundColor: page === totalPages ? C.surfaceAlt : C.surface, cursor: page === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.borderLight}`, backgroundColor: page === totalPages ? C.surfaceAlt : C.surface, cursor: page === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ChevronRight size={15} color={page === totalPages ? '#D1D5DB' : '#6B7280'} />
               </button>
             </div>
