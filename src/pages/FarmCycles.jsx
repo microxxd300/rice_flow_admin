@@ -170,7 +170,8 @@ export default function FarmCycles() {
   const canDelete = isAdmin(role);
   const [search, setSearch]       = useState('');
   const [stageFilter, setStage]   = useState('');
-  const [statusFilter, setStatusF]= useState('');
+  // Opens on growing crops; finished ones are one pick away in the status filter
+  const [statusFilter, setStatusF]= useState('active');
   const [userFilter, setUser]     = useState('');
   const [view, setView]           = useState('list');
   const [pageAsked, setPage]      = useState(1);
