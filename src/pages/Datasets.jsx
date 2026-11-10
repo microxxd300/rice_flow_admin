@@ -82,6 +82,17 @@ const BLANK_FORM = {
   is_active:             true,
 };
 
+// What the form must have before it is sent; a blank number used to be saved as 0
+const REQUIRED_FIELDS = [
+  ['variety_id', 'Variety ID'], ['nsic_code', 'NSIC Code'], ['common_name', 'Common Name'],
+  ['maturity_days', 'Maturity'], ['avg_yield_t_ha', 'Avg Yield'], ['max_yield_t_ha', 'Max Yield'],
+  ['optimal_temp_min', 'Optimal Temp Min'], ['optimal_temp_max', 'Optimal Temp Max'],
+  ['optimal_rainfall_min', 'Optimal Rainfall Min'],
+];
+const isBlank = (v) => v === null || v === undefined || String(v).trim() === '';
+// An empty optional number stays empty (Number(null) would save 0)
+const optionalNumber = (v) => (isBlank(v) ? null : Number(v));
+
 /* -------------------------------------------------------------------------- */
 /*  Atoms                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -258,21 +269,26 @@ function VarietyModal({ open, initial, onClose, onSaved, canManage }) {
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
   const handleSave = async () => {
+    const missing = REQUIRED_FIELDS.filter(([key]) => isBlank(form[key])).map(([, label]) => label);
+    if (missing.length) {
+      setError(`Please fill in: ${missing.join(', ')}.`);
+      return;
+    }
     setSaving(true);
     setError('');
     try {
       // Clean: send numbers as numbers, drop empties.
       const payload = {
         ...form,
-        maturity_days:        Number(form.maturity_days)        || 0,
-        avg_yield_t_ha:       Number(form.avg_yield_t_ha)       || 0,
-        max_yield_t_ha:       Number(form.max_yield_t_ha)       || 0,
-        plant_height_cm:      form.plant_height_cm === '' ? null : Number(form.plant_height_cm),
-        amylose_pct:          form.amylose_pct === '' ? null : Number(form.amylose_pct),
-        optimal_temp_min:     Number(form.optimal_temp_min)     || 0,
-        optimal_temp_max:     Number(form.optimal_temp_max)     || 0,
-        optimal_rainfall_min: Number(form.optimal_rainfall_min) || 0,
-        year_released:        form.year_released === '' ? null : Number(form.year_released),
+        maturity_days:        Number(form.maturity_days),
+        avg_yield_t_ha:       Number(form.avg_yield_t_ha),
+        max_yield_t_ha:       Number(form.max_yield_t_ha),
+        plant_height_cm:      optionalNumber(form.plant_height_cm),
+        amylose_pct:          optionalNumber(form.amylose_pct),
+        optimal_temp_min:     Number(form.optimal_temp_min),
+        optimal_temp_max:     Number(form.optimal_temp_max),
+        optimal_rainfall_min: Number(form.optimal_rainfall_min),
+        year_released:        optionalNumber(form.year_released),
       };
       const saved = editing
         ? await api.updateVariety(initial.id, payload)
@@ -513,7 +529,7 @@ export default function Datasets() {
   const [search,  setSearch]    = useState('');
   const [ecoFil,  setEcoFil]    = useState('');
   const [statFil, setStatFil]   = useState('');
-  const [page,    setPage]      = useState(1);
+  const [pageAsked, setPage]    = useState(1);
 
   const [modalOpen, setModalOpen]   = useState(false);
   const [importOpen, setImportOpen] = useState(false);   // the CSV import panel (admin)
@@ -546,11 +562,14 @@ export default function Datasets() {
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Deleting or filtering can leave fewer pages than the one asked for
+  const page = Math.min(pageAsked, totalPages);
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const active     = list.filter(v => v.is_active).length;
   const inactive   = list.length - active;
-  const avgYield   = list.length
-    ? (list.reduce((s, v) => s + (v.avg_yield_t_ha || 0), 0) / list.length).toFixed(2)
+  const inUse      = list.filter(v => v.is_active);
+  const avgYield   = inUse.length
+    ? (inUse.reduce((s, v) => s + (v.avg_yield_t_ha || 0), 0) / inUse.length).toFixed(2)
     : '0.00';
 
   /* Exports exactly what the table is showing — every active filter
@@ -683,7 +702,7 @@ export default function Datasets() {
             <div style={tile}>
               <p style={{ fontSize: 13, fontWeight: 700, color: C.text }}>In use</p>
               <p style={{ marginTop: 8 }}>
-                <span style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', color: C.text }}>{active}</span>
+                <span style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', color: C.text }}>{loading ? '—' : active}</span>
                 <span style={{ fontSize: 13, color: C.textSecondary, marginLeft: 6 }}>varieties · avg {avgYield} t/ha</span>
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 12 }}>
@@ -713,10 +732,10 @@ export default function Datasets() {
             <div style={tile}>
               <p style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Hidden</p>
               <p style={{ marginTop: 8 }}>
-                <span style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', color: C.text }}>{inactive}</span>
+                <span style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', color: C.text }}>{loading ? '—' : inactive}</span>
               </p>
               <p style={{ fontSize: 12.5, color: C.textSecondary, marginTop: 4 }}>
-                {inactive ? 'Turned off: never recommended to farmers.' : 'Every variety can be recommended.'}
+                {!loading && (inactive ? 'Turned off: never recommended to farmers.' : 'Every variety can be recommended.')}
               </p>
             </div>
           </div>
@@ -866,7 +885,7 @@ export default function Datasets() {
           <div style={{ padding: '14px 20px', borderTop: `1px solid ${C.borderLight}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <p style={{ fontSize: 12, color: '#9CA3AF' }}>Page {page} of {totalPages}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.borderLight}`, backgroundColor: page === 1 ? C.surfaceAlt : C.surface, cursor: page === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.borderLight}`, backgroundColor: page === 1 ? C.surfaceAlt : C.surface, cursor: page === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ChevronLeft size={15} color={page === 1 ? '#D1D5DB' : '#6B7280'} />
               </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
@@ -874,7 +893,7 @@ export default function Datasets() {
                   {p}
                 </button>
               ))}
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.borderLight}`, backgroundColor: page === totalPages ? C.surfaceAlt : C.surface, cursor: page === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.borderLight}`, backgroundColor: page === totalPages ? C.surfaceAlt : C.surface, cursor: page === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ChevronRight size={15} color={page === totalPages ? '#D1D5DB' : '#6B7280'} />
               </button>
             </div>

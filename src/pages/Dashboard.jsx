@@ -245,6 +245,14 @@ export default function Dashboard() {
             );
           })}
         </div>
+        {/* Crops outside the ten stages, so an empty board still says why */}
+        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginTop: 14, fontSize: 13, color: C.textSecondary }}>
+          <span><b style={{ color: C.text, fontVariantNumeric: 'tabular-nums' }}>{board?.not_sown ?? 0}</b> not sown yet</span>
+          <span>
+            <b style={{ color: C.text, fontVariantNumeric: 'tabular-nums' }}>{board?.harvested_this_season ?? 0}</b> harvested this season
+            {board?.season_start && ` (${board.season} season, since ${new Date(`${board.season_start}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`}
+          </span>
+        </div>
       </div>
 
       {/* ── Needs attention, and where ── */}

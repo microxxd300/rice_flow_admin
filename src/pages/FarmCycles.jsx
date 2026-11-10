@@ -6,7 +6,7 @@ import {
   Tractor, List, LayoutGrid, Trash2,
 } from 'lucide-react';
 import Skeleton, { SkeletonStyles, SkelStatCard } from '../components/Skeleton';
-import { normalizeStage } from '../stageGroups';
+import { cycleStage } from '../stageGroups';
 import { useLiveRefresh } from '../liveRefresh';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin } from '../permissions';
@@ -74,16 +74,16 @@ function StageProgress({ current }) {
   const idx  = STAGES.indexOf(current);
   const sc   = STAGE_COLOR[current] || STAGE_COLOR['Land Prep'];
   const Icon = STAGE_ICON[current] || Tractor;
-  const safeIdx = idx >= 0 ? idx : 0;
-  const pct  = Math.round(((safeIdx + 1) / STAGES.length) * 100);
+  const stageNo = idx + 1;              // 0 for a crop not sown yet
+  const pct  = Math.round((stageNo / STAGES.length) * 100);
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, backgroundColor: sc.bg, padding: '3px 10px 3px 7px', borderRadius: 20 }}>
           <Icon size={12} color={sc.text} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: sc.text }}>{current || '—'}</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: sc.text }}>{current || 'Not sown yet'}</span>
         </div>
-        <span style={{ fontSize: 11, color: '#9CA3AF' }}>Stage {safeIdx + 1} of 5</span>
+        <span style={{ fontSize: 11, color: '#9CA3AF' }}>Stage {stageNo} of 5</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: '#F0F2F1', overflow: 'hidden' }}>
@@ -125,7 +125,7 @@ function Dropdown({ value, onChange, options, placeholder }) {
         />
       </button>
       {open && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 50, backgroundColor: C.surface, border: `1px solid ${C.borderLight}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(26,26,46,0.10)', minWidth: '100%', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 50, backgroundColor: C.surface, border: `1px solid ${C.borderLight}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(26,26,46,0.10)', minWidth: '100%', maxHeight: 300, overflowY: 'auto' }}>
           <div onClick={() => { onChange(''); setOpen(false); }}
             style={{ padding: '9px 14px', fontSize: 13, color: !value ? C.primary : '#9CA3AF', cursor: 'pointer', fontWeight: !value ? 600 : 400, backgroundColor: !value ? C.primaryLighter : 'transparent' }}>
             {placeholder}
@@ -170,10 +170,11 @@ export default function FarmCycles() {
   const canDelete = isAdmin(role);
   const [search, setSearch]       = useState('');
   const [stageFilter, setStage]   = useState('');
-  const [statusFilter, setStatusF]= useState('');
+  // Opens on growing crops; finished ones are one pick away in the status filter
+  const [statusFilter, setStatusF]= useState('active');
   const [userFilter, setUser]     = useState('');
   const [view, setView]           = useState('list');
-  const [page, setPage]           = useState(1);
+  const [pageAsked, setPage]      = useState(1);
   const [cycles, setCycles]       = useState([]);
   const [loading, setLoading]     = useState(true);
   const [deleting, setDeleting]   = useState(null);
@@ -204,7 +205,7 @@ export default function FarmCycles() {
           planting:  c.planting_date,
           expected:  c.expected_harvest_date,
           actual:    c.actual_harvest_date,
-          stage:     normalizeStage(c.current_stage, c.stage_no),
+          stage:     cycleStage(c.current_stage, c.stage_no),
           rawStage:  c.current_stage,
           stageNo:   c.stage_no,
           status:    c.status,
@@ -250,6 +251,8 @@ export default function FarmCycles() {
   });
 
   const totalPages  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Deleting or filtering can leave fewer pages than the one asked for
+  const page = Math.min(pageAsked, totalPages);
   const paginated   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const stageCounts = STAGES.reduce((a, s) => ({
     ...a,
@@ -349,7 +352,8 @@ export default function FarmCycles() {
         const soon = cycles
           .filter(c => c.status === 'active' && c.expected && days(c.expected) >= 0 && days(c.expected) <= SOON_DAYS)
           .sort((a, b) => a.expected.localeCompare(b.expected));
-        const active = cycles.filter(c => c.status === 'active');
+        // Growing means sown: a planned crop has no stage yet
+        const active = cycles.filter(c => c.status === 'active' && c.stage);
         const count = st => cycles.filter(c => c.status === st).length;
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 16 }}>
@@ -458,7 +462,7 @@ export default function FarmCycles() {
                   </p>
                 </div>
                 <div>
-                  <p style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 5 }}>Planted</p>
+                  <p style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 5 }}>{c.stage ? 'Planted' : 'Planned'}</p>
                   <p style={{ fontSize: 12, color: C.text, fontWeight: 600 }}>{fmtDate(c.planting)}</p>
                 </div>
                 <div>
@@ -552,7 +556,7 @@ function Pagination({ page, totalPages, setPage }) {
     <div style={{ padding: '14px 22px', borderTop: `1px solid ${C.borderLight}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: C.surface }}>
       <p style={{ fontSize: 12, color: '#9CA3AF' }}>Page {page} of {totalPages}</p>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.borderLight}`, backgroundColor: page === 1 ? C.surfaceAlt : C.surface, cursor: page === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.borderLight}`, backgroundColor: page === 1 ? C.surfaceAlt : C.surface, cursor: page === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <ChevronLeft size={15} color={page === 1 ? '#D1D5DB' : '#6B7280'} />
         </button>
         {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
@@ -560,7 +564,7 @@ function Pagination({ page, totalPages, setPage }) {
             {p}
           </button>
         ))}
-        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.borderLight}`, backgroundColor: page === totalPages ? C.surfaceAlt : C.surface, cursor: page === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.borderLight}`, backgroundColor: page === totalPages ? C.surfaceAlt : C.surface, cursor: page === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <ChevronRight size={15} color={page === totalPages ? '#D1D5DB' : '#6B7280'} />
         </button>
       </div>
