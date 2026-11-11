@@ -31,7 +31,7 @@ export const HEAT_MODES = {
     low: '0 t/ha', high: `${YIELD_TOP}+ t/ha`,
     colors: ['#FACC15', '#65A30D', '#166534'],
     tip: (f) => `Last harvest: ${Number(f.yieldTHa).toFixed(1)} t/ha`,
-    missing: (n, total) => `${n} of ${total} farms have a harvest recorded. Farms without one are not shown.`,
+    missing: (n, total) => `${n} of ${total} farms ${n === 1 ? 'has' : 'have'} a harvest recorded. Farms without one are not shown.`,
   },
   flood: {
     label: 'Flood Risk',
@@ -41,7 +41,7 @@ export const HEAT_MODES = {
     low: 'Low', high: 'High',
     colors: ['#10B981', '#F59E0B', '#DC2626'],
     tip: (f) => `Flood risk: ${f.floodRisk.charAt(0).toUpperCase()}${f.floodRisk.slice(1).toLowerCase()}`,
-    missing: (n, total) => `${n} of ${total} farms have a flood check. Farms without one are not shown.`,
+    missing: (n, total) => `${n} of ${total} farms ${n === 1 ? 'has' : 'have'} a flood check. Farms without one are not shown.`,
   },
 };
 

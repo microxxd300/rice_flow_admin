@@ -19,6 +19,11 @@ describe('heatmap', () => {
     expect(heatNote(farms, 'flood')).toMatch(/^2 of 3 farms/);
   });
 
+  it('says "1 of 7 farms has", not "have"', () => {
+    const farms = [farm(1, { yieldTHa: 2 }), farm(2), farm(3)];
+    expect(heatNote(farms, 'yield')).toBe('1 of 3 farms has a harvest recorded. Farms without one are not shown.');
+  });
+
   it('counts every farm for density and needs no note', () => {
     const farms = [farm(1), farm(2)];
     expect(heatFarms(farms, 'density')).toHaveLength(2);
