@@ -6,7 +6,6 @@ import {
   Tractor, List, LayoutGrid, Trash2,
 } from 'lucide-react';
 import Skeleton, { SkeletonStyles, SkelStatCard } from '../components/Skeleton';
-import { cycleStage } from '../stageGroups';
 import { useLiveRefresh } from '../liveRefresh';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin } from '../permissions';
@@ -81,7 +80,7 @@ function StageProgress({ current }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, backgroundColor: sc.bg, padding: '3px 10px 3px 7px', borderRadius: 20 }}>
           <Icon size={12} color={sc.text} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: sc.text }}>{current || 'Not sown yet'}</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: sc.text }}>{current === 'Land Prep' ? 'Land Prep · not sown yet' : current || '—'}</span>
         </div>
         <span style={{ fontSize: 11, color: '#9CA3AF' }}>Stage {stageNo} of 5</span>
       </div>
@@ -205,7 +204,8 @@ export default function FarmCycles() {
           planting:  c.planting_date,
           expected:  c.expected_harvest_date,
           actual:    c.actual_harvest_date,
-          stage:     cycleStage(c.current_stage, c.stage_no),
+          // The group (Land Prep ... Harvesting) comes from the backend, one rule for every screen
+          stage:     c.stage_group_label || '',
           rawStage:  c.current_stage,
           stageNo:   c.stage_no,
           status:    c.status,
@@ -352,8 +352,8 @@ export default function FarmCycles() {
         const soon = cycles
           .filter(c => c.status === 'active' && c.expected && days(c.expected) >= 0 && days(c.expected) <= SOON_DAYS)
           .sort((a, b) => a.expected.localeCompare(b.expected));
-        // Growing means sown: a planned crop has no stage yet
-        const active = cycles.filter(c => c.status === 'active' && c.stage);
+        // Growing means sown: a planned crop (Land Prep) has no growth stage yet
+        const active = cycles.filter(c => c.status === 'active' && c.stageNo);
         const count = st => cycles.filter(c => c.status === st).length;
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 16 }}>
@@ -462,7 +462,7 @@ export default function FarmCycles() {
                   </p>
                 </div>
                 <div>
-                  <p style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 5 }}>{c.stage ? 'Planted' : 'Planned'}</p>
+                  <p style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 5 }}>{c.stageNo ? 'Planted' : 'Planned'}</p>
                   <p style={{ fontSize: 12, color: C.text, fontWeight: 600 }}>{fmtDate(c.planting)}</p>
                 </div>
                 <div>
