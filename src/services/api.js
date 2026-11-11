@@ -52,7 +52,7 @@ async function authorizedFetch(url, init) {
 
 /* ── GET cache ────────────────────────────────────────────────────────────
    Every page refetched on mount, so navigating away and back meant another
-   full round trip to the API (and on to Supabase) before the skeleton
+   full round trip to the API (and on to the database) before the skeleton
    cleared. GETs are now cached briefly and served from memory on revisit,
    which is what makes page-to-page navigation feel instant.
 
