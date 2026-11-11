@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 // IMPORTANT: leafletSetup must come before any usage of L.heatLayer.
 // It sets window.L = L so the leaflet.heat UMD plugin can attach itself.
@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { ROLE } from '../permissions';
 import { MapPin, ChevronLeft, ChevronRight, Search, Flame, Layers, Trash2 } from 'lucide-react';
 import { SkeletonStyles, SkelListRow } from '../components/Skeleton';
+import { HEAT_MODES, heatFarms, heatNote, heatGradient, heatRadius, heatColor } from '../heatmap';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -72,47 +73,61 @@ function FitBounds({ farms }) {
 
 
 /**
- * Heatmap weighting strategies. Returns a value 0..1 per farm so
- * leaflet.heat can render density, yield, or flood-risk hotspots.
+ * Leaflet.heat overlay — shaded blobs showing farm density, yield, or flood risk
+ * (rules in src/heatmap.js). Blobs cover about 500 m and grow as you zoom in.
  */
-const FLOOD_WEIGHTS = { low: 0.18, moderate: 0.55, high: 1.0 };
-
-const HEATMAP_WEIGHTS = {
-  density: () => 1,
-  yield:   (f)  => Math.min(1, Math.max(0, (Number(f.yieldTHa) || 0) / 7)),
-  flood:   (f)  => FLOOD_WEIGHTS[(f.floodRisk || '').toLowerCase()] ?? 0.18,
-};
-
-/**
- * Leaflet.heat overlay — softly shaded blobs showing farm density,
- * yield, or flood risk depending on the active mode.
- */
-function HeatLayer({ farms, mode = 'density' }) {
+function HeatLayer({ points, mode = 'density' }) {
   const map = useMap();
   useEffect(() => {
-    if (!farms.length) return;
+    if (!points.length) return;
     if (typeof L.heatLayer !== 'function') {
       // eslint-disable-next-line no-console
       console.error('[FarmMap] leaflet.heat plugin not loaded — check src/services/leafletSetup.js');
       return;
     }
-    const weight = HEATMAP_WEIGHTS[mode] || HEATMAP_WEIGHTS.density;
-    const points = farms.map(f => [f.lat, f.lng, weight(f)]);
-    const layer = L.heatLayer(points, {
-      radius:  28,
-      blur:    20,
-      maxZoom: 17,
-      minOpacity: 0.45,
-      gradient: {
-        0.2: '#10B981',
-        0.4: '#F9A825',
-        0.7: '#F5A623',
-        1.0: '#E74C3C',
-      },
+    const size = () => {
+      const radius = heatRadius(map.getZoom(), map.getCenter().lat);
+      return { radius, blur: Math.round(radius * 0.6) };
+    };
+    const layer = L.heatLayer(points.map(p => [p.farm.lat, p.farm.lng, p.weight]), {
+      ...size(),
+      max: 1,
+      maxZoom: 0,    // leaflet.heat fades points below maxZoom; 0 keeps each farm's strength at every zoom
+      minOpacity: 0.4,
+      gradient: heatGradient(mode),
     }).addTo(map);
-    return () => { map.removeLayer(layer); };
-  }, [farms, mode, map]);
+    const onZoom = () => layer.setOptions(size());
+    map.on('zoomend', onZoom);
+    return () => { map.off('zoomend', onZoom); map.removeLayer(layer); };
+  }, [points, mode, map]);
   return null;
+}
+
+/**
+ * One spot per farm, with a hover label (farm name and value). Density's spots are invisible
+ * hover targets over the blended heatmap; yield and flood draw each farm in its own colour,
+ * so neighbours are never added together. Spots grow as you zoom in, like the heatmap.
+ */
+function FarmSpots({ points, mode }) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(() => map.getZoom());
+  useEffect(() => {
+    const onZoom = () => setZoom(map.getZoom());
+    map.on('zoomend', onZoom);
+    return () => { map.off('zoomend', onZoom); };
+  }, [map]);
+  const m = HEAT_MODES[mode];
+  const radius = Math.round(heatRadius(zoom, map.getCenter().lat) * 0.55);
+  return points.map(({ farm: f, v }) => (
+    <CircleMarker key={`${mode}-${f.id}`} center={[f.lat, f.lng]} radius={radius}
+      pathOptions={m.blend
+        ? { stroke: false, fillOpacity: 0 }
+        : { color: '#FFFFFF', weight: 2, fillColor: heatColor(mode, v), fillOpacity: 0.75 }}>
+      <Tooltip direction="top" offset={[0, -radius]}>
+        <b>{f.name}</b><br />{m.tip(f)}
+      </Tooltip>
+    </CircleMarker>
+  ));
 }
 
 
@@ -228,11 +243,11 @@ const MAP_MODES = [
   { value: 'clusters', label: 'Clusters', Icon: Layers },
 ];
 
-const HEATMAP_MODE_OPTIONS = [
-  { value: 'density', label: 'Farm Density', desc: 'Where farms cluster geographically' },
-  { value: 'yield',   label: 'Avg Yield',     desc: 'Where productivity is highest'      },
-  { value: 'flood',   label: 'Flood Risk',    desc: 'Areas exposed to flood risk'        },
-];
+const HEATMAP_MODE_OPTIONS = Object.entries(HEAT_MODES).map(([value, m]) => ({ value, label: m.label, desc: m.desc }));
+
+// The heatmap greys out the street map (same OpenStreetMap tiles, no extra service or key)
+// so its colours stand out; pins and clusters keep the coloured street map
+const HEAT_BASE_CSS = '.heat-base { filter: grayscale(1) brightness(1.08) contrast(0.8); }';
 
 export default function FarmMap() {
   const [search, setSearch]     = useState('');
@@ -325,13 +340,19 @@ export default function FarmMap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [farms]);
 
-  const filtered = farms.filter(f => {
+  // Kept the same between renders so the map layers redraw only when the farms or filters change
+  const filtered = useMemo(() => farms.filter(f => {
     const q = search.toLowerCase();
     return (
       (f.name.toLowerCase().includes(q) || (f.owner || '').toLowerCase().includes(q) || (f.barangay || '').toLowerCase().includes(q)) &&
       (!riskFilter || f.ecosystem === riskFilter)
     );
-  });
+  }), [farms, search, riskFilter]);
+
+  const heatOn     = mapMode === 'heatmap';
+  const heatPoints = useMemo(() => (heatOn ? heatFarms(filtered, heatMode) : []), [heatOn, filtered, heatMode]);
+  const note       = heatOn ? heatNote(filtered, heatMode) : '';
+  const heat       = HEAT_MODES[heatMode];
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -357,6 +378,7 @@ export default function FarmMap() {
             <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
               {filtered.length} farms mapped · Panabo City, Davao del Norte
             </p>
+            {note && <p style={{ fontSize: 12, color: C.warning, marginTop: 2 }}>{note}</p>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
             {/* Mode toggle */}
@@ -448,24 +470,27 @@ export default function FarmMap() {
             )}
 
             {/* Heatmap gradient legend */}
-            {mapMode === 'heatmap' && (
+            {heatOn && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 10, color: '#9CA3AF' }}>low</span>
+                <span style={{ fontSize: 11, color: C.textSecondary }}>{heat.low}</span>
                 <div style={{
-                  width: 90, height: 6, borderRadius: 4,
-                  background: 'linear-gradient(90deg, #10B981, #F9A825, #F5A623, #E74C3C)',
+                  width: 90, height: 8, borderRadius: 4,
+                  background: `linear-gradient(90deg, ${heat.colors.join(', ')})`,
                 }} />
-                <span style={{ fontSize: 10, color: '#9CA3AF' }}>high</span>
+                <span style={{ fontSize: 11, color: C.textSecondary }}>{heat.high}</span>
               </div>
             )}
           </div>
         </div>
         <div style={{ height: 520, overflow: 'hidden', borderRadius: '0 0 12px 12px' }}>
           <MapContainer center={[7.3086, 125.6839]} zoom={11} style={{ height: '100%', width: '100%' }}>
-            <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <style>{HEAT_BASE_CSS}</style>
+            <TileLayer key={heatOn ? 'grey' : 'street'} className={heatOn ? 'heat-base' : ''}
+              attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <FitBounds farms={filtered} />
 
-            {mapMode === 'heatmap' && <HeatLayer farms={filtered} mode={heatMode} />}
+            {heatOn && heat.blend && <HeatLayer points={heatPoints} mode={heatMode} />}
+            {heatOn && <FarmSpots points={heatPoints} mode={heatMode} />}
 
             {mapMode === 'pins' && filtered.map(f => {
               const r = resolved[f.id];
