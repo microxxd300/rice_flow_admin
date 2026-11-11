@@ -38,11 +38,12 @@ const toMap = (lat, lon) => ({
   y: ((MAP.lat1 - lat) / (MAP.lat1 - MAP.lat0) * MAP.h + 10) / (MAP.h + 20) * 100,
 });
 
+// Farmers' reported problems come first: the Dashboard opens on them
 const ATTENTION = [
-  { key: 'late_steps',      title: 'Late on a guide step', Icon: Clock,         tone: ['#FEF3DC', '#B45309'], to: '/farms',
-    detail: r => `${r.step} · ${r.days_late} days late` },
   { key: 'problems',        title: 'Problems this week',   Icon: Bug,           tone: ['#FDECEC', '#DC2626'], to: '/farms',
     detail: r => `${r.issue_label}${r.severity ? ` · ${r.severity}` : ''}${r.note ? ` · “${r.note}”` : ''}` },
+  { key: 'late_steps',      title: 'Late on a guide step', Icon: Clock,         tone: ['#FEF3DC', '#B45309'], to: '/farms',
+    detail: r => `${r.step} · ${r.days_late} days late` },
   { key: 'flagged_pins',    title: 'Pins to check',        Icon: MapPinOff,     tone: ['#EAF1FD', '#2563EB'], to: '/map',
     detail: r => `${PIN_LABEL[r.flag] || r.flag}${r.kept ? ' · farmer kept it' : ''}` },
   { key: 'harvest_overdue', title: 'Harvest not recorded', Icon: Wheat,         tone: ['#E8F5EF', '#047857'], to: '/farms',
@@ -92,7 +93,7 @@ export default function Dashboard() {
   const [model,   setModel]   = useState(undefined);
   const [health,  setHealth]  = useState(null);
   const [changes, setChanges] = useState(null);
-  const [tab,     setTab]     = useState('late_steps');
+  const [tab,     setTab]     = useState(ATTENTION[0].key);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updated, setUpdated] = useState(null);
