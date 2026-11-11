@@ -9,7 +9,7 @@ import Skeleton, { SkeletonStyles, SkelStatCard } from '../components/Skeleton';
 import { useLiveRefresh } from '../liveRefresh';
 import { useAuth } from '../context/AuthContext';
 import { isAdmin } from '../permissions';
-import picLandPrep from '../assets/growth/stage_01.png';
+import picLandPrep from '../assets/empty/no_farm.png';   // a plowed field: not sown yet, so not the seedling picture
 import picPlanting from '../assets/growth/stage_02.png';
 import picVegetative from '../assets/growth/stage_03.png';
 import picReproductive from '../assets/growth/stage_06.png';
